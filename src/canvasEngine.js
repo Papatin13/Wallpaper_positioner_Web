@@ -12,7 +12,7 @@ export class CanvasEngine {
     this.canvas = canvasElement;
     this.ctx = canvasElement.getContext('2d');
     this.monitorManager = monitorManager;
-    this.monitor = monitorManager.monitors[0];
+    this.monitor = monitorManager.defaultMonitor || monitorManager.monitors[0];
 
     this.layers = [];
     this.selectedLayers = [];
@@ -67,9 +67,14 @@ export class CanvasEngine {
   }
 
   setMonitor(monitor) {
+    if (!monitor) {
+      monitor = (this.monitorManager && (this.monitorManager.defaultMonitor || this.monitorManager.monitors[0]));
+    }
     this.monitor = monitor;
-    this.fitToView();
-    this.requestRender();
+    if (this.monitor) {
+      this.fitToView();
+      this.requestRender();
+    }
   }
 
   setBackgroundColor(rgb) {
@@ -93,6 +98,12 @@ export class CanvasEngine {
   }
 
   fitToView() {
+    if (!this.monitor || !this.monitor.width || !this.monitor.height) {
+      if (this.monitorManager) {
+        this.monitor = this.monitorManager.defaultMonitor || this.monitorManager.monitors[0];
+      }
+      if (!this.monitor) return;
+    }
     const rect = this.canvas.parentElement.getBoundingClientRect();
     if (rect.width <= 0 || rect.height <= 0) return;
 

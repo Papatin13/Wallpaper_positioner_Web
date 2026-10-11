@@ -388,7 +388,8 @@ class WallpaperApp {
             this.monitorManager.setCustomResolution(monitorData.width, monitorData.height);
             this.canvasEngine.setMonitor(this.monitorManager.customMonitor);
           } else {
-            this.canvasEngine.setMonitor(this.monitorManager.deviceMonitor);
+            const mon = this.monitorManager.getMonitorById(monitorData.id);
+            this.canvasEngine.setMonitor(mon || this.monitorManager.defaultMonitor);
           }
         }
 
@@ -1137,7 +1138,8 @@ class WallpaperApp {
             this.monitorManager.setCustomResolution(monitorData.width, monitorData.height);
             this.canvasEngine.setMonitor(this.monitorManager.customMonitor);
           } else {
-            this.canvasEngine.setMonitor(this.monitorManager.deviceMonitor);
+            const mon = this.monitorManager.getMonitorById(monitorData.id);
+            this.canvasEngine.setMonitor(mon || this.monitorManager.defaultMonitor);
           }
         }
         this.canvasEngine.layers = layers;
@@ -1234,7 +1236,8 @@ class WallpaperApp {
             this.monitorManager.setCustomResolution(monitorData.width, monitorData.height);
             this.canvasEngine.setMonitor(this.monitorManager.customMonitor);
           } else {
-            this.canvasEngine.setMonitor(this.monitorManager.deviceMonitor);
+            const mon = this.monitorManager.getMonitorById(monitorData.id);
+            this.canvasEngine.setMonitor(mon || this.monitorManager.defaultMonitor);
           }
         }
         this.canvasEngine.layers = layers;
