@@ -90,14 +90,10 @@ class WallpaperApp {
     const mon = this.canvasEngine.monitor;
     if (!lbl) return;
 
-    if (mon.isSpanned && mon.subMonitors) {
-      const subs = mon.subMonitors.map(s => `${s.name} (${s.width}x${s.height})`).join(' + ');
-      const boundary = mon.subMonitors.length > 1 ? mon.subMonitors[1].relX : 0;
-      lbl.innerHTML = `${tr('spanned_title', { subs })}<br>${tr('spanned_area', { w: mon.width, h: mon.height })}${tr('spanned_boundary', { boundary })}`;
-    } else if (mon.isCustom) {
-      lbl.innerHTML = `${tr('custom_mon_name')}<br>${tr('monitor_res_label', { w: mon.width, h: mon.height })}`;
+    if (mon.isCustom) {
+      lbl.innerHTML = `<strong>${mon.name}</strong><br>Aktive Fläche: ${mon.width} × ${mon.height} px`;
     } else {
-      lbl.innerHTML = `${mon.name}: ${mon.description}<br>${tr('monitor_res_label', { w: mon.width, h: mon.height })}`;
+      lbl.innerHTML = `<strong>${mon.name}</strong><br>Erkannte Auflösung: ${mon.width} × ${mon.height} px`;
     }
 
     // Update active state in monitor button group
@@ -372,6 +368,10 @@ class WallpaperApp {
       btn.addEventListener('click', () => {
         const id = btn.getAttribute('data-mon');
         const mon = this.monitorManager.getMonitorById(id);
+        if (mon.isCustom) {
+          if (inputCustomW) inputCustomW.value = mon.width;
+          if (inputCustomH) inputCustomH.value = mon.height;
+        }
         this.canvasEngine.setMonitor(mon);
         this.updateMonitorDropdown();
         this.updateMonitorInfo();
@@ -405,8 +405,13 @@ class WallpaperApp {
         const { layers, bgColor, monitorData } = await ProjectManager.deserialize(data);
 
         if (monitorData) {
-          const mon = this.monitorManager.getMonitorById(monitorData.id);
-          if (mon) this.canvasEngine.setMonitor(mon);
+          const isCustom = monitorData.id === '__custom__' || monitorData.is_custom;
+          if (isCustom && monitorData.width && monitorData.height) {
+            this.monitorManager.setCustomResolution(monitorData.width, monitorData.height);
+            this.canvasEngine.setMonitor(this.monitorManager.customMonitor);
+          } else {
+            this.canvasEngine.setMonitor(this.monitorManager.deviceMonitor);
+          }
         }
 
         this.canvasEngine.layers = layers;
@@ -1134,8 +1139,13 @@ class WallpaperApp {
         const data = JSON.parse(text);
         const { layers, bgColor, monitorData } = await ProjectManager.deserialize(data);
         if (monitorData) {
-          const mon = this.monitorManager.getMonitorById(monitorData.id);
-          if (mon) this.canvasEngine.setMonitor(mon);
+          const isCustom = monitorData.id === '__custom__' || monitorData.is_custom;
+          if (isCustom && monitorData.width && monitorData.height) {
+            this.monitorManager.setCustomResolution(monitorData.width, monitorData.height);
+            this.canvasEngine.setMonitor(this.monitorManager.customMonitor);
+          } else {
+            this.canvasEngine.setMonitor(this.monitorManager.deviceMonitor);
+          }
         }
         this.canvasEngine.layers = layers;
         this.canvasEngine.setBackgroundColor(bgColor);
@@ -1226,8 +1236,13 @@ class WallpaperApp {
       try {
         const { layers, bgColor, monitorData } = await ProjectManager.deserialize(saved);
         if (monitorData) {
-          const mon = this.monitorManager.getMonitorById(monitorData.id);
-          if (mon) this.canvasEngine.setMonitor(mon);
+          const isCustom = monitorData.id === '__custom__' || monitorData.is_custom;
+          if (isCustom && monitorData.width && monitorData.height) {
+            this.monitorManager.setCustomResolution(monitorData.width, monitorData.height);
+            this.canvasEngine.setMonitor(this.monitorManager.customMonitor);
+          } else {
+            this.canvasEngine.setMonitor(this.monitorManager.deviceMonitor);
+          }
         }
         this.canvasEngine.layers = layers;
         this.canvasEngine.setBackgroundColor(bgColor);

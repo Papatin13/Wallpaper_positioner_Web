@@ -264,25 +264,17 @@ export class MonitorInfo {
 
   get displayLabel() {
     if (this.isDetected) {
-      return `${this.name} (${this.width}×${this.height}) [Erkannt]`;
-    }
-    if (this.isSpanned) {
-      const names = this.subMonitors.length
-        ? this.subMonitors.map(s => s.name).join(' + ')
-        : 'Alle Monitore';
-      return `Dual Monitor: ${names} (${this.width}×${this.height})`;
+      return `${this.name} (${this.width}×${this.height})`;
     }
     if (this.isCustom) {
-      return `Custom (${this.width}×${this.height})`;
+      return `📐 Benutzerdefiniert (${this.width}×${this.height})`;
     }
-    const hz = this.refreshRate > 0 ? ` @ ${Math.round(this.refreshRate)}Hz` : '';
-    return `${this.name} (${this.width}×${this.height}${hz})`;
+    return `${this.name} (${this.width}×${this.height})`;
   }
 
   get shortLabel() {
     if (this.isDetected) return `${this.name} (${this.width}×${this.height})`;
-    if (this.isSpanned) return `Dual Monitor (${this.width}×${this.height})`;
-    if (this.isCustom) return `Custom (${this.width}×${this.height})`;
+    if (this.isCustom) return `📐 Custom (${this.width}×${this.height})`;
     return `${this.name} (${this.width}×${this.height})`;
   }
 }
