@@ -242,6 +242,7 @@ export class MonitorInfo {
     relY = 0,
     isSpanned = false,
     isCustom = false,
+    isDetected = false,
     subMonitors = [],
   }) {
     this.id = id;
@@ -257,15 +258,19 @@ export class MonitorInfo {
     this.relY = relY;
     this.isSpanned = isSpanned;
     this.isCustom = isCustom;
+    this.isDetected = isDetected;
     this.subMonitors = subMonitors;
   }
 
   get displayLabel() {
+    if (this.isDetected) {
+      return `${this.name} (${this.width}×${this.height}) [Erkannt]`;
+    }
     if (this.isSpanned) {
       const names = this.subMonitors.length
         ? this.subMonitors.map(s => s.name).join(' + ')
-        : 'All Monitors';
-      return `Spanned: ${names} (${this.width}×${this.height})`;
+        : 'Alle Monitore';
+      return `Dual Monitor: ${names} (${this.width}×${this.height})`;
     }
     if (this.isCustom) {
       return `Custom (${this.width}×${this.height})`;
@@ -275,7 +280,8 @@ export class MonitorInfo {
   }
 
   get shortLabel() {
-    if (this.isSpanned) return `Spanned (${this.width}×${this.height})`;
+    if (this.isDetected) return `${this.name} (${this.width}×${this.height})`;
+    if (this.isSpanned) return `Dual Monitor (${this.width}×${this.height})`;
     if (this.isCustom) return `Custom (${this.width}×${this.height})`;
     return `${this.name} (${this.width}×${this.height})`;
   }

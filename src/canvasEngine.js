@@ -346,6 +346,7 @@ export class CanvasEngine {
     window.addEventListener('mouseup', (e) => this.onMouseUp(e));
     this.canvas.addEventListener('wheel', (e) => this.onWheel(e), { passive: false });
     this.canvas.addEventListener('contextmenu', (e) => e.preventDefault());
+    this.setupTouchEvents();
 
     window.addEventListener('keydown', (e) => {
       if (e.code === 'Space' && !this.isSpacePressed && e.target.tagName !== 'INPUT') {
@@ -359,6 +360,89 @@ export class CanvasEngine {
         this.isSpacePressed = false;
         this.canvas.style.cursor = 'default';
       }
+    });
+  }
+
+  setupTouchEvents() {
+    let initialPinchDist = null;
+    let initialZoom = 1.0;
+    let initialMidpoint = null;
+
+    this.canvas.addEventListener('touchstart', (e) => {
+      if (e.touches.length === 2) {
+        e.preventDefault();
+        const t1 = e.touches[0];
+        const t2 = e.touches[1];
+        const rect = this.canvas.getBoundingClientRect();
+        initialPinchDist = Math.hypot(t2.clientX - t1.clientX, t2.clientY - t1.clientY);
+        initialZoom = this.zoom;
+        initialMidpoint = {
+          wx: (t1.clientX + t2.clientX) / 2 - rect.left,
+          wy: (t1.clientY + t2.clientY) / 2 - rect.top,
+        };
+        this.isDraggingLayer = false;
+        this.activeHandle = null;
+        this.isRubberband = false;
+      } else if (e.touches.length === 1) {
+        const t = e.touches[0];
+        this.onMouseDown({
+          button: 0,
+          clientX: t.clientX,
+          clientY: t.clientY,
+          shiftKey: false,
+          ctrlKey: false,
+          metaKey: false,
+        });
+      }
+    }, { passive: false });
+
+    this.canvas.addEventListener('touchmove', (e) => {
+      if (e.touches.length === 2 && initialPinchDist && initialMidpoint) {
+        e.preventDefault();
+        const t1 = e.touches[0];
+        const t2 = e.touches[1];
+        const rect = this.canvas.getBoundingClientRect();
+        const currentDist = Math.hypot(t2.clientX - t1.clientX, t2.clientY - t1.clientY);
+        const scale = currentDist / initialPinchDist;
+        const currentMidpoint = {
+          wx: (t1.clientX + t2.clientX) / 2 - rect.left,
+          wy: (t1.clientY + t2.clientY) / 2 - rect.top,
+        };
+
+        const targetZoom = Math.max(0.05, Math.min(6.0, initialZoom * scale));
+        const { cx, cy } = this.widgetToCanvas(initialMidpoint.wx, initialMidpoint.wy);
+        this.zoom = targetZoom;
+        this.panX = currentMidpoint.wx - cx * this.zoom;
+        this.panY = currentMidpoint.wy - cy * this.zoom;
+        this.userPannedOrZoomed = true;
+        if (this.onViewportChanged) {
+          this.onViewportChanged({ zoom: this.zoom, panX: this.panX, panY: this.panY });
+        }
+        this.requestRender();
+      } else if (e.touches.length === 1) {
+        const t = e.touches[0];
+        this.onMouseMove({
+          clientX: t.clientX,
+          clientY: t.clientY,
+          preventDefault: () => e.preventDefault(),
+        });
+      }
+    }, { passive: false });
+
+    this.canvas.addEventListener('touchend', (e) => {
+      if (e.touches.length < 2) {
+        initialPinchDist = null;
+        initialMidpoint = null;
+      }
+      if (e.touches.length === 0) {
+        this.onMouseUp(e);
+      }
+    });
+
+    this.canvas.addEventListener('touchcancel', () => {
+      initialPinchDist = null;
+      initialMidpoint = null;
+      this.onMouseUp({});
     });
   }
 
@@ -401,6 +485,19 @@ export class CanvasEngine {
           cy: lcy,
         };
         return;
+      }
+    }
+
+    // If no layers on canvas and clicked inside monitor, trigger upload
+    if (this.layers.length === 0) {
+      const monList = (this.monitor.isSpanned && this.monitor.subMonitors) ? this.monitor.subMonitors : [this.monitor];
+      for (const sub of monList) {
+        const rx = this.monitor.isSpanned ? sub.relX : 0.0;
+        const ry = this.monitor.isSpanned ? sub.relY : 0.0;
+        if (cx >= rx && cx <= rx + sub.width && cy >= ry && cy <= ry + sub.height) {
+          document.getElementById('fileInputImages')?.click();
+          return;
+        }
       }
     }
 
@@ -713,6 +810,47 @@ export class CanvasEngine {
 
       // Top-left Monitor Badge
       this.drawMonitorBadge(ctx, sub, rx + 18.0 / this.zoom, ry + 18.0 / this.zoom);
+    }
+
+    // Render subtle Empty State guide when no layers exist
+    if (this.layers.length === 0) {
+      for (const sub of monList) {
+        const rx = this.monitor.isSpanned ? sub.relX : 0.0;
+        const ry = this.monitor.isSpanned ? sub.relY : 0.0;
+
+        ctx.save();
+        ctx.strokeStyle = 'rgba(255, 255, 255, 0.15)';
+        ctx.lineWidth = 2.0 / this.zoom;
+        ctx.setLineDash([12 / this.zoom, 8 / this.zoom]);
+        const pad = Math.min(sub.width, sub.height) * 0.08;
+        this.drawRoundedRect(ctx, rx + pad, ry + pad, sub.width - pad * 2, sub.height - pad * 2, 20 / this.zoom);
+        ctx.stroke();
+        ctx.setLineDash([]);
+
+        const centerX = rx + sub.width / 2;
+        const centerY = ry + sub.height / 2;
+        const fontSize = Math.max(16, Math.min(42, sub.width * 0.038));
+
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+
+        // Title
+        ctx.font = `600 ${fontSize}px 'Inter', sans-serif`;
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.85)';
+        ctx.fillText(tr('empty_title'), centerX, centerY - fontSize * 0.8);
+
+        // Subtitle
+        ctx.font = `400 ${fontSize * 0.6}px 'Inter', sans-serif`;
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.5)';
+        ctx.fillText(tr('empty_hint'), centerX, centerY + fontSize * 0.4);
+
+        // Resolution badge
+        ctx.font = `600 ${fontSize * 0.55}px 'Inter', sans-serif`;
+        ctx.fillStyle = '#89b4fa';
+        ctx.fillText(`${sub.width} × ${sub.height} px`, centerX, centerY + fontSize * 1.5);
+
+        ctx.restore();
+      }
     }
 
     // 4. Render Layers (clipped to respective monitor screens if spanned)

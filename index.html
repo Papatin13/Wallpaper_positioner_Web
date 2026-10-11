@@ -17,6 +17,9 @@
       <div class="header-left">
         <!-- Monitor Select Dropdown -->
         <select id="selMonitorHeader" class="select-input" title="Bildschirm-Modus"></select>
+        <button id="btnAutoDetectScreen" class="btn btn-icon" title="Bildschirmauflösung automatisch erkennen">
+          <svg viewBox="0 0 24 24"><path d="M17 1.01L7 1c-1.1 0-2 .9-2 2v18c0 1.1.9 2 2 2h10c1.1 0 2-.9 2-2V3c0-1.1-.9-1.99-2-1.99zM17 19H7V5h10v14z"/></svg>
+        </button>
 
         <div class="header-divider"></div>
 
@@ -57,11 +60,6 @@
       </div>
 
       <div class="header-right">
-        <button id="btnLoadDemo" class="btn" title="Demo-Bilder laden">
-          <svg viewBox="0 0 24 24"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
-          <span data-i18n="load_demo">Demo</span>
-        </button>
-
         <button id="btnExportModal" class="btn" title="Wallpaper exportieren (Strg+E)">
           <span data-i18n="export_wallpaper">Exportieren...</span>
         </button>
@@ -116,8 +114,11 @@
 
           <!-- Section 1: MONITOR & RESOLUTION -->
           <div class="sidebar-section">
-            <div class="sidebar-title">
+            <div class="sidebar-title" style="display: flex; justify-content: space-between; align-items: center;">
               <span data-i18n="section_monitor">BILDSCHIRM & AUFLÖSUNG</span>
+              <button id="btnCloseSidebarMobile" class="btn btn-icon btn-close-mobile" title="Seitenleiste schließen" style="display: none;">
+                <svg viewBox="0 0 24 24"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+              </button>
             </div>
             <div id="lblMonitorInfo" class="sidebar-subtext">
               Spanned: HDMI-A-1 (1920x1080) + DP-1 (2560x1440)<br>
@@ -126,9 +127,8 @@
 
             <!-- Monitor Switch Buttons -->
             <div class="btn-group" id="monitorButtonGroup">
-              <button class="btn" data-mon="DP-1">DP-1</button>
-              <button class="btn" data-mon="HDMI-A-1">HDMI-A-1</button>
-              <button class="btn active" data-mon="__spanned__" data-i18n="mon_switch_all">🖥️ Alle</button>
+              <button class="btn active" data-mon="current-device">📱 Dieses Gerät</button>
+              <button class="btn" data-mon="__spanned__">🖥️ Dual Monitor</button>
               <button class="btn" data-mon="__custom__" data-i18n="mon_switch_custom">📐 Eigene</button>
             </div>
 

@@ -178,4 +178,15 @@ export class ProjectManager {
     }
     return null;
   }
+
+  /**
+   * Clear saved session from localStorage.
+   */
+  static clearSession() {
+    try {
+      localStorage.removeItem(this.SESSION_KEY);
+    } catch (e) {
+      console.warn('localStorage clear failed:', e);
+    }
+  }
 }

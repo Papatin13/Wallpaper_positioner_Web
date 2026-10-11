@@ -142,6 +142,11 @@ export const TRANSLATIONS = {
     toast_demo_loaded: "Demo-Collage geladen!",
     toast_wallpaper_exported: "Wallpaper erfolgreich exportiert!",
     toast_slices_exported: "Monitor-Zuschnitte exportiert!",
+    toast_screen_detected: "Bildschirm erkannt: {w} × {h} px",
+    empty_title: "Keine Bilder hinzugefügt",
+    empty_hint: "Tippen oder Bilder ablegen",
+    btn_detect_screen: "Bildschirmauflösung automatisch erkennen",
+    confirm_new_project: "Neues Projekt anlegen? Alle aktuellen Ebenen werden gelöscht.",
   },
   en: {
     // App & HeaderBar
@@ -281,6 +286,11 @@ export const TRANSLATIONS = {
     toast_demo_loaded: "Demo collage loaded!",
     toast_wallpaper_exported: "Wallpaper exported successfully!",
     toast_slices_exported: "Monitor slices exported!",
+    toast_screen_detected: "Screen detected: {w} × {h} px",
+    empty_title: "No images added",
+    empty_hint: "Tap or drop images to add",
+    btn_detect_screen: "Auto-detect screen resolution",
+    confirm_new_project: "Start new project? All current layers will be cleared.",
   }
 };
 

@@ -9,7 +9,7 @@ import { ColorEngine, rgbToHex, hexToRgb } from './colorEngine.js';
 import { AutoLayout } from './autoLayout.js';
 import { ProjectManager } from './projectManager.js';
 import { WallpaperExporter } from './exporter.js';
-import { createDemoLayers } from './demoAssets.js';
+
 import { tr, getLanguage, setLanguage } from './i18n.js';
 
 class WallpaperApp {
@@ -39,6 +39,11 @@ class WallpaperApp {
     this.updateMonitorDropdown();
     this.updateMonitorInfo();
     this.refreshPalette();
+
+    // Auto collapse sidebar on mobile devices for unobstructed canvas
+    if (typeof window !== 'undefined' && window.innerWidth < 768) {
+      document.getElementById('sidebar')?.classList.add('collapsed');
+    }
 
     // Connect Canvas callbacks
     this.canvasEngine.onSelectionChanged = (layer, multi) => this.onSelectionChanged(layer, multi);
@@ -320,6 +325,35 @@ class WallpaperApp {
       this.updateMonitorInfo();
     });
 
+    // Auto-detect screen resolution button
+    document.getElementById('btnAutoDetectScreen')?.addEventListener('click', () => {
+      const mon = this.monitorManager.reDetectDeviceScreen();
+      this.canvasEngine.setMonitor(mon);
+      this.updateMonitorDropdown();
+      this.updateMonitorInfo();
+      this.showToast(tr('toast_screen_detected', { w: mon.width, h: mon.height }));
+    });
+
+    // Mobile close sidebar button
+    document.getElementById('btnCloseSidebarMobile')?.addEventListener('click', () => {
+      document.getElementById('sidebar')?.classList.add('collapsed');
+      setTimeout(() => this.canvasEngine.resizeCanvas(), 210);
+    });
+
+    // Listen to orientation change on mobile devices
+    const onScreenChange = () => {
+      if (this.canvasEngine.monitor.id === 'current-device') {
+        const mon = this.monitorManager.reDetectDeviceScreen();
+        this.canvasEngine.setMonitor(mon);
+        this.updateMonitorDropdown();
+        this.updateMonitorInfo();
+      }
+    };
+    if (typeof window !== 'undefined' && window.screen?.orientation) {
+      window.screen.orientation.addEventListener('change', onScreenChange);
+    }
+    window.addEventListener('orientationchange', onScreenChange);
+
     document.querySelectorAll('#monitorButtonGroup .btn').forEach(btn => {
       btn.addEventListener('click', () => {
         const id = btn.getAttribute('data-mon');
@@ -331,12 +365,16 @@ class WallpaperApp {
     });
 
     document.getElementById('btnNewProject')?.addEventListener('click', () => {
-      if (confirm('Neues Projekt anlegen? Alle aktuellen Ebenen werden gelöscht.')) {
+      if (confirm(tr('confirm_new_project'))) {
         this.canvasEngine.layers = [];
         this.canvasEngine.clearSelection();
+        ProjectManager.clearSession();
+        const mon = this.monitorManager.reDetectDeviceScreen();
+        this.canvasEngine.setMonitor(mon);
+        this.updateMonitorDropdown();
+        this.updateMonitorInfo();
         this.canvasEngine.requestRender();
         this.onLayersChanged();
-        this.showToast('Neues Projekt angelegt');
       }
     });
 
@@ -396,7 +434,7 @@ class WallpaperApp {
     document.getElementById('btnZoomFit')?.addEventListener('click', () => this.canvasEngine.fitToView());
     document.getElementById('btnZoomIn')?.addEventListener('click', () => this.canvasEngine.zoomIn());
 
-    document.getElementById('btnLoadDemo')?.addEventListener('click', () => this.loadDemoCollage());
+
 
     document.getElementById('btnToggleLang')?.addEventListener('click', () => {
       const nextLang = getLanguage() === 'de' ? 'en' : 'de';
@@ -1093,31 +1131,6 @@ class WallpaperApp {
     });
   }
 
-  async loadDemoCollage() {
-    this.showToast('Lade Demo-Collage...');
-    const layers = await createDemoLayers();
-    if (layers.length === 0) return;
-
-    this.canvasEngine.layers = layers;
-    // Set Spanned dual monitor
-    const spanned = this.monitorManager.getMonitorById('__spanned__');
-    this.canvasEngine.setMonitor(spanned);
-    this.updateMonitorDropdown();
-    this.updateMonitorInfo();
-
-    // Auto layout in dynamic mode
-    this.currentLayoutMode = 'dynamic';
-    document.querySelectorAll('#layoutModeGroup .btn').forEach(b => {
-      b.classList.toggle('active', b.getAttribute('data-mode') === 'dynamic');
-    });
-
-    this.applyAutoLayout();
-    this.canvasEngine.fitToView();
-    this.canvasEngine.selectLayer(layers[0]);
-    this.onLayersChanged();
-    this.showToast(tr('toast_demo_loaded'));
-  }
-
   // -------------------------------------------------------------------------
   // Auto-Save & Session Restore
   // -------------------------------------------------------------------------
@@ -1134,7 +1147,21 @@ class WallpaperApp {
   }
 
   async initSession() {
-    const saved = ProjectManager.loadSession();
+    let saved = ProjectManager.loadSession();
+
+    // Discard any old demo sessions from previous app runs
+    if (saved && saved.layers) {
+      const hasLegacyDemo = saved.layers.some(l =>
+        (l.name && l.name.toLowerCase().includes('demo')) ||
+        (l.data_url && l.data_url.includes('/demo/')) ||
+        (l.file_path && l.file_path.includes('demo'))
+      );
+      if (hasLegacyDemo) {
+        ProjectManager.clearSession();
+        saved = null;
+      }
+    }
+
     if (saved && saved.layers && saved.layers.length > 0) {
       try {
         const { layers, bgColor, monitorData } = await ProjectManager.deserialize(saved);
@@ -1154,8 +1181,12 @@ class WallpaperApp {
       }
     }
 
-    // Default first launch: Load demo collage!
-    this.loadDemoCollage();
+    // Default: Clean start with user's detected screen!
+    const detectedMon = this.monitorManager.deviceMonitor;
+    this.canvasEngine.setMonitor(detectedMon);
+    this.updateMonitorDropdown();
+    this.updateMonitorInfo();
+    this.canvasEngine.fitToView();
   }
 
   showToast(message, duration = 3000) {

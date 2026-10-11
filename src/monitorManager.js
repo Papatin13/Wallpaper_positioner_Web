@@ -1,9 +1,62 @@
 /**
  * Monitor Manager for Wallpaper Positioner Web.
- * Supports Spanned Multi-Monitor setups, Individual physical screens, and Custom Canvas dimensions.
+ * Supports auto-detection of device screen resolution (Mobile / Tablet / PC),
+ * presets, custom resolutions, and multi-monitor spanned setups.
  */
 
 import { MonitorInfo } from './models.js';
+
+/**
+ * Accurately detect user's current physical screen resolution and device type.
+ */
+export function detectCurrentScreen() {
+  if (typeof window === 'undefined') {
+    return {
+      width: 1920,
+      height: 1080,
+      dpr: 1,
+      isMobile: false,
+      isPortrait: false,
+      label: 'Standard Display',
+    };
+  }
+
+  const dpr = window.devicePixelRatio || 1;
+  const isMobile = /Android|iPhone|iPad|iPod|webOS|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)
+    || (window.matchMedia && window.matchMedia('(max-width: 820px)').matches && 'ontouchstart' in window);
+
+  // Screen metrics in CSS pixels
+  let rawW = window.screen?.width || window.innerWidth || 1920;
+  let rawH = window.screen?.height || window.innerHeight || 1080;
+
+  let isPortrait = rawH > rawW;
+  if (window.screen?.orientation && window.screen.orientation.type) {
+    isPortrait = window.screen.orientation.type.includes('portrait');
+  }
+
+  // Calculate actual physical pixels
+  let physW = Math.round(rawW * (dpr > 1 ? dpr : 1));
+  let physH = Math.round(rawH * (dpr > 1 ? dpr : 1));
+
+  // Sanity lower bound
+  physW = Math.max(320, physW);
+  physH = Math.max(320, physH);
+
+  const label = isMobile
+    ? (isPortrait ? 'Smartphone (Hochformat)' : 'Smartphone (Querformat)')
+    : 'Aktueller Bildschirm';
+
+  return {
+    width: physW,
+    height: physH,
+    rawW,
+    rawH,
+    dpr,
+    isMobile,
+    isPortrait,
+    label,
+  };
+}
 
 export class MonitorManager {
   constructor() {
@@ -11,7 +64,7 @@ export class MonitorManager {
     this.customMonitor = new MonitorInfo({
       id: '__custom__',
       name: 'Custom',
-      description: 'Custom Canvas Resolution',
+      description: 'Benutzerdefinierte Auflösung',
       width: 1920,
       height: 1080,
       refreshRate: 60,
@@ -22,69 +75,126 @@ export class MonitorManager {
   }
 
   initDefaultMonitors() {
-    // Detect user's current physical screen resolution
-    const screenW = (typeof window !== 'undefined' && window.screen?.width) ? window.screen.width : 1920;
-    const screenH = (typeof window !== 'undefined' && window.screen?.height) ? window.screen.height : 1080;
-    const detectedDpr = (typeof window !== 'undefined' && window.devicePixelRatio) ? window.devicePixelRatio : 1;
-    const physicalW = Math.round(screenW * (detectedDpr > 1 ? detectedDpr : 1));
-    const physicalH = Math.round(screenH * (detectedDpr > 1 ? detectedDpr : 1));
+    const detected = detectCurrentScreen();
+    this.detectedInfo = detected;
 
-    // Monitor 1: HDMI-A-1 (1920x1080)
-    const m1 = new MonitorInfo({
+    // 1. Detected Device Screen (Default!)
+    this.deviceMonitor = new MonitorInfo({
+      id: 'current-device',
+      name: detected.isMobile ? '📱 Dieses Gerät' : '🖥️ Mein Bildschirm',
+      description: `${detected.label} (${detected.width}×${detected.height})`,
+      width: detected.width,
+      height: detected.height,
+      refreshRate: 60,
+      isDetected: true,
+    });
+
+    // 2. Popular display presets
+    const pFhd = new MonitorInfo({
+      id: 'preset-fhd',
+      name: '🖥️ FHD 1920×1080 (16:9)',
+      description: 'Standard Full HD (1920×1080)',
+      width: 1920,
+      height: 1080,
+    });
+
+    const pQhd = new MonitorInfo({
+      id: 'preset-qhd',
+      name: '🖥️ QHD 2560×1440 (16:9)',
+      description: '2K WQHD (2560×1440)',
+      width: 2560,
+      height: 1440,
+    });
+
+    const p4k = new MonitorInfo({
+      id: 'preset-4k',
+      name: '🖥️ 4K 3840×2160 (16:9)',
+      description: '4K Ultra HD (3840×2160)',
+      width: 3840,
+      height: 2160,
+    });
+
+    const pPhone = new MonitorInfo({
+      id: 'preset-phone',
+      name: '📱 Handy FHD+ 1080×2400',
+      description: 'Smartphone Wallpaper (1080×2400)',
+      width: 1080,
+      height: 2400,
+    });
+
+    const pPhoneRetina = new MonitorInfo({
+      id: 'preset-phone-retina',
+      name: '📱 iPhone / OLED 1170×2532',
+      description: 'Smartphone Retina / OLED (1170×2532)',
+      width: 1170,
+      height: 2532,
+    });
+
+    const pUltrawide = new MonitorInfo({
+      id: 'preset-21-9',
+      name: '🖥️ Ultrawide 3440×1440 (21:9)',
+      description: '21:9 Ultrawide (3440×1440)',
+      width: 3440,
+      height: 1440,
+    });
+
+    // 3. Multi-Monitor Spanned Setup (PC Dual Display)
+    const MONITOR_GAP = 120;
+    const sub1 = new MonitorInfo({
       id: 'HDMI-A-1',
       name: 'HDMI-A-1',
       description: 'FHD Display (1920×1080)',
       width: 1920,
       height: 1080,
-      refreshRate: 75.0,
-      scale: 1.0,
-      x: 0,
-      y: 360,
+      relX: 0,
+      relY: 360,
     });
 
-    // Monitor 2: DP-1 (2560x1440)
-    const m2 = new MonitorInfo({
+    const sub2 = new MonitorInfo({
       id: 'DP-1',
       name: 'DP-1',
       description: 'QHD Gaming Display (2560×1440)',
       width: 2560,
       height: 1440,
-      refreshRate: 144.0,
-      scale: 1.0,
-      x: 1920,
-      y: 0,
-    });
-
-    // Spanned Monitor with gap separation (matches original app: 120px gap)
-    const MONITOR_GAP = 120;
-    const sub1 = new MonitorInfo({
-      ...m1,
-      relX: 0,
-      relY: 360,
-      isSpanned: false,
-    });
-    const sub2 = new MonitorInfo({
-      ...m2,
-      relX: 1920 + MONITOR_GAP, // 2040px
+      relX: 1920 + MONITOR_GAP,
       relY: 0,
-      isSpanned: false,
     });
-
-    const totalSpannedW = sub2.relX + sub2.width; // 2040 + 2560 = 4600px
-    const totalSpannedH = Math.max(sub1.relY + sub1.height, sub2.relY + sub2.height); // 1440px
 
     const spanned = new MonitorInfo({
       id: '__spanned__',
-      name: 'Spanned',
+      name: '🖥️ Dual Monitor Setup (PC)',
       description: 'Dual-Monitor Spanned (HDMI-A-1 + DP-1)',
-      width: totalSpannedW,
-      height: totalSpannedH,
-      refreshRate: 0,
+      width: sub2.relX + sub2.width,
+      height: Math.max(sub1.relY + sub1.height, sub2.relY + sub2.height),
       isSpanned: true,
       subMonitors: [sub1, sub2],
     });
 
-    this.monitors = [spanned, m1, m2, this.customMonitor];
+    // Set available monitors list: Detected device is first and default!
+    this.monitors = [
+      this.deviceMonitor,
+      pFhd,
+      pQhd,
+      p4k,
+      pPhone,
+      pPhoneRetina,
+      pUltrawide,
+      spanned,
+      this.customMonitor,
+    ];
+  }
+
+  /**
+   * Re-measure current screen (e.g. after rotation or resize)
+   */
+  reDetectDeviceScreen() {
+    const detected = detectCurrentScreen();
+    this.detectedInfo = detected;
+    this.deviceMonitor.width = detected.width;
+    this.deviceMonitor.height = detected.height;
+    this.deviceMonitor.description = `${detected.label} (${detected.width}×${detected.height})`;
+    this.deviceMonitor.name = detected.isMobile ? '📱 Dieses Gerät' : '🖥️ Mein Bildschirm';
+    return this.deviceMonitor;
   }
 
   setCustomResolution(width, height) {
@@ -106,6 +216,8 @@ export class MonitorManager {
       { name: '2K', width: 2560, height: 1440 },
       { name: '4K', width: 3840, height: 2160 },
       { name: '21:9', width: 3440, height: 1440 },
+      { name: 'Handy', width: 1080, height: 2400 },
+      { name: 'iPhone', width: 1170, height: 2532 },
       { name: '9:16', width: 1080, height: 1920 },
       { name: '1:1', width: 2000, height: 2000 },
     ];
@@ -115,7 +227,6 @@ export class MonitorManager {
    * Set custom multi-monitor configuration
    */
   configureMultiMonitor(displays) {
-    // displays is an array of { id, name, width, height, refreshRate, yOffset }
     const MONITOR_GAP = 120;
     let currentRelX = 0;
     const subList = [];
@@ -155,7 +266,7 @@ export class MonitorManager {
 
     const spanned = new MonitorInfo({
       id: '__spanned__',
-      name: 'Spanned',
+      name: '🖥️ Multi-Monitor Spanned',
       description: 'Multi-Monitor Spanned',
       width: totalW,
       height: totalH,
@@ -163,7 +274,12 @@ export class MonitorManager {
       subMonitors: subList,
     });
 
-    this.monitors = [spanned, ...singleMonitors, this.customMonitor];
+    this.monitors = [
+      this.deviceMonitor,
+      spanned,
+      ...singleMonitors,
+      this.customMonitor,
+    ];
     return spanned;
   }
 }
