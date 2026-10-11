@@ -72,6 +72,12 @@ export const TRANSLATIONS = {
     margin_label: "Randabstand (Canvas):",
     gap_label: "Bildabstand (Zwischenraum):",
     cover_label: "Zelle ganz ausfüllen (Cover):",
+    snap_magnetic_label: "Magnetisches Einrasten (Snap):",
+    snap_magnetic_hint: "Bilder docken beim Ziehen an anderen Bildern & Kanten an",
+    title_snap_active: "Magnetisches Einrasten aktiv (Alt halten zum freien Bewegen)",
+    title_snap_inactive: "Magnetisches Einrasten inaktiv (Klicken zum Aktivieren)",
+    toast_snap_enabled: "Magnetisches Einrasten aktiviert 🧲",
+    toast_snap_disabled: "Magnetisches Einrasten deaktiviert",
     btn_layout_apply: "Bilder jetzt anordnen",
 
     // Selected Image & Style
@@ -219,6 +225,12 @@ export const TRANSLATIONS = {
     margin_label: "Canvas Margin:",
     gap_label: "Image Spacing (Gap):",
     cover_label: "Fill entire cell (Cover):",
+    snap_magnetic_label: "Magnetic Snapping (Smart Guides):",
+    snap_magnetic_hint: "Images snap to other images and canvas edges when dragged",
+    title_snap_active: "Magnetic snapping active (Hold Alt to move freely)",
+    title_snap_inactive: "Magnetic snapping inactive (Click to enable)",
+    toast_snap_enabled: "Magnetic snapping enabled 🧲",
+    toast_snap_disabled: "Magnetic snapping disabled",
     btn_layout_apply: "Arrange Images Now",
 
     // Selected Image & Style

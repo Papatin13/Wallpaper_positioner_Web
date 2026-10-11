@@ -147,6 +147,13 @@ input[type="number"] {
   border-radius: var(--radius-md);
 }
 
+.btn-icon.active {
+  background: rgba(0, 210, 255, 0.18);
+  color: #00d2ff;
+  border-color: rgba(0, 210, 255, 0.45);
+  box-shadow: 0 0 10px rgba(0, 210, 255, 0.25);
+}
+
 .btn-icon svg, .btn svg {
   width: 16px;
   height: 16px;

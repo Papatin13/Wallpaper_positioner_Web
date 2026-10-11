@@ -51,6 +51,12 @@ export class CanvasEngine {
 
     this.isSpacePressed = false;
 
+    // Magnetic Snapping & Smart Guides
+    this.snapEnabled = true;
+    this.snapGap = 20.0;
+    this.snapMargin = 40.0;
+    this.activeSnapGuides = [];
+
     // Callbacks
     this.onSelectionChanged = null;
     this.onLayersChanged = null;
@@ -60,6 +66,296 @@ export class CanvasEngine {
     this.setupEventListeners();
     this.resizeCanvas();
     window.addEventListener('resize', () => this.resizeCanvas());
+  }
+
+  setSnapEnabled(enabled) {
+    this.snapEnabled = Boolean(enabled);
+    if (!this.snapEnabled) {
+      this.activeSnapGuides = [];
+    }
+    this.requestRender();
+  }
+
+  getLayerBounds(layer, worldX, worldY) {
+    const bw = layer.borderWidth || 0;
+    const w = (layer.width || 0) + bw * 2;
+    const h = (layer.height || 0) + bw * 2;
+    if (!layer.rotation || layer.rotation % 360 === 0) {
+      return {
+        left: worldX - w / 2,
+        right: worldX + w / 2,
+        centerX: worldX,
+        top: worldY - h / 2,
+        bottom: worldY + h / 2,
+        centerY: worldY,
+        hw: w / 2,
+        hh: h / 2,
+      };
+    }
+    const rad = (layer.rotation * Math.PI) / 180.0;
+    const cos = Math.abs(Math.cos(rad));
+    const sin = Math.abs(Math.sin(rad));
+    const bbW = w * cos + h * sin;
+    const bbH = w * sin + h * cos;
+    return {
+      left: worldX - bbW / 2,
+      right: worldX + bbW / 2,
+      centerX: worldX,
+      top: worldY - bbH / 2,
+      bottom: worldY + bbH / 2,
+      centerY: worldY,
+      hw: bbW / 2,
+      hh: bbH / 2,
+    };
+  }
+
+  calculateSnapping(deltaX, deltaY, altKey = false) {
+    if (!this.snapEnabled || altKey) {
+      return { snapDeltaX: deltaX, snapDeltaY: deltaY, guides: [] };
+    }
+
+    const primaryLayer = this.selectedLayer || (this.selectedLayers.length > 0 ? this.selectedLayers[0] : null);
+    if (!primaryLayer) {
+      return { snapDeltaX: deltaX, snapDeltaY: deltaY, guides: [] };
+    }
+
+    const startPos = this.dragStartMultiPositions.get(primaryLayer) || { x: primaryLayer.x, y: primaryLayer.y };
+    const rawX = startPos.x + deltaX;
+    const rawY = startPos.y + deltaY;
+
+    // Convert primary layer raw position to canvas world coordinates
+    let pOffsetX = 0;
+    let pOffsetY = 0;
+    if (this.monitor.isSpanned) {
+      const sub = this.getSubMonitorForLayer(primaryLayer);
+      if (sub) {
+        pOffsetX = sub.relX;
+        pOffsetY = sub.relY;
+      }
+    }
+
+    const rawWorldX = pOffsetX + rawX;
+    const rawWorldY = pOffsetY + rawY;
+    const pB = this.getLayerBounds(primaryLayer, rawWorldX, rawWorldY);
+
+    const snapThreshold = 10.0 / Math.max(0.15, this.zoom);
+    const snapGap = typeof this.snapGap === 'number' ? this.snapGap : 20.0;
+
+    let bestDiffX = 0;
+    let minAbsDiffX = Infinity;
+    let guideXInfo = null;
+
+    let bestDiffY = 0;
+    let minAbsDiffY = Infinity;
+    let guideYInfo = null;
+
+    const checkSnapX = (targetWorldX, guideX, y1, y2, label = null, labelPos = null) => {
+      const diff = targetWorldX - rawWorldX;
+      const absDiff = Math.abs(diff);
+      if (absDiff <= snapThreshold && absDiff < minAbsDiffX) {
+        minAbsDiffX = absDiff;
+        bestDiffX = diff;
+        guideXInfo = {
+          type: "vertical",
+          x: Math.round(guideX),
+          y1: Math.min(y1, y2),
+          y2: Math.max(y1, y2),
+          label,
+          labelPos,
+        };
+      }
+    };
+
+    const checkSnapY = (targetWorldY, guideY, x1, x2, label = null, labelPos = null) => {
+      const diff = targetWorldY - rawWorldY;
+      const absDiff = Math.abs(diff);
+      if (absDiff <= snapThreshold && absDiff < minAbsDiffY) {
+        minAbsDiffY = absDiff;
+        bestDiffY = diff;
+        guideYInfo = {
+          type: "horizontal",
+          y: Math.round(guideY),
+          x1: Math.min(x1, x2),
+          x2: Math.max(x1, x2),
+          label,
+          labelPos,
+        };
+      }
+    };
+
+    // 1. Snap to other visible layers
+    const otherLayers = this.layers.filter(l => l.visible && !this.selectedLayers.includes(l));
+    for (const ol of otherLayers) {
+      const { cx: oWorldX, cy: oWorldY } = this.getLayerCanvasPos(ol);
+      const oB = this.getLayerBounds(ol, oWorldX, oWorldY);
+
+      const spanY1 = Math.min(pB.top, oB.top);
+      const spanY2 = Math.max(pB.bottom, oB.bottom);
+      const spanX1 = Math.min(pB.left, oB.left);
+      const spanX2 = Math.max(pB.right, oB.right);
+
+      // --- X Snapping ---
+      // Left to Left
+      checkSnapX(oB.left + pB.hw, oB.left, spanY1, spanY2);
+      // Right to Right
+      checkSnapX(oB.right - pB.hw, oB.right, spanY1, spanY2);
+      // Center to Center
+      checkSnapX(oB.centerX, oB.centerX, spanY1, spanY2);
+
+      // Edge to Edge with Gap (to the right of other)
+      if (snapGap > 0) {
+        const targetX = oB.right + snapGap + pB.hw;
+        const gX = oB.right + snapGap;
+        checkSnapX(targetX, gX, spanY1, spanY2, `${snapGap}px`, { x: oB.right + snapGap / 2, y: (pB.centerY + oB.centerY) / 2 });
+      } else {
+        checkSnapX(oB.right + pB.hw, oB.right, spanY1, spanY2);
+      }
+      // Edge to Edge with Gap (to the left of other)
+      if (snapGap > 0) {
+        const targetX = oB.left - snapGap - pB.hw;
+        const gX = oB.left - snapGap;
+        checkSnapX(targetX, gX, spanY1, spanY2, `${snapGap}px`, { x: oB.left - snapGap / 2, y: (pB.centerY + oB.centerY) / 2 });
+      } else {
+        checkSnapX(oB.left - pB.hw, oB.left, spanY1, spanY2);
+      }
+
+      // --- Y Snapping ---
+      // Top to Top
+      checkSnapY(oB.top + pB.hh, oB.top, spanX1, spanX2);
+      // Bottom to Bottom
+      checkSnapY(oB.bottom - pB.hh, oB.bottom, spanX1, spanX2);
+      // Center to Center
+      checkSnapY(oB.centerY, oB.centerY, spanX1, spanX2);
+
+      // Edge to Edge with Gap (below other)
+      if (snapGap > 0) {
+        const targetY = oB.bottom + snapGap + pB.hh;
+        const gY = oB.bottom + snapGap;
+        checkSnapY(targetY, gY, spanX1, spanX2, `${snapGap}px`, { x: (pB.centerX + oB.centerX) / 2, y: oB.bottom + snapGap / 2 });
+      } else {
+        checkSnapY(oB.bottom + pB.hh, oB.bottom, spanX1, spanX2);
+      }
+      // Edge to Edge with Gap (above other)
+      if (snapGap > 0) {
+        const targetY = oB.top - snapGap - pB.hh;
+        const gY = oB.top - snapGap;
+        checkSnapY(targetY, gY, spanX1, spanX2, `${snapGap}px`, { x: (pB.centerX + oB.centerX) / 2, y: oB.top - snapGap / 2 });
+      } else {
+        checkSnapY(oB.top - pB.hh, oB.top, spanX1, spanX2);
+      }
+    }
+
+    // 2. Snap to Monitor Screens & Centers
+    const monList = (this.monitor.isSpanned && this.monitor.subMonitors && this.monitor.subMonitors.length > 0)
+      ? this.monitor.subMonitors
+      : [this.monitor];
+
+    for (const sub of monList) {
+      const rx = this.monitor.isSpanned ? sub.relX : 0.0;
+      const ry = this.monitor.isSpanned ? sub.relY : 0.0;
+      const rw = sub.width;
+      const rh = sub.height;
+      const mCenterX = rx + rw / 2.0;
+      const mCenterY = ry + rh / 2.0;
+
+      // Center
+      checkSnapX(mCenterX, mCenterX, ry, ry + rh);
+      checkSnapY(mCenterY, mCenterY, rx, rx + rw);
+
+      // Monitor Edges (with and without margin)
+      const m = Math.max(0, this.snapMargin || 0);
+      if (m > 0) {
+        checkSnapX(rx + m + pB.hw, rx + m, ry, ry + rh);
+        checkSnapX(rx + rw - m - pB.hw, rx + rw - m, ry, ry + rh);
+        checkSnapY(ry + m + pB.hh, ry + m, rx, rx + rw);
+        checkSnapY(ry + rh - m - pB.hh, ry + rh - m, rx, rx + rw);
+      }
+      checkSnapX(rx + pB.hw, rx, ry, ry + rh);
+      checkSnapX(rx + rw - pB.hw, rx + rw, ry, ry + rh);
+      checkSnapY(ry + pB.hh, ry, rx, rx + rw);
+      checkSnapY(ry + rh - pB.hh, ry + rh, rx, rx + rw);
+    }
+
+    const guides = [];
+    if (guideXInfo) {
+      guideXInfo.midY = (guideXInfo.y1 + guideXInfo.y2) / 2;
+      guides.push(guideXInfo);
+    }
+    if (guideYInfo) {
+      guideYInfo.midX = (guideYInfo.x1 + guideYInfo.x2) / 2;
+      guides.push(guideYInfo);
+    }
+
+    return {
+      snapDeltaX: deltaX + bestDiffX,
+      snapDeltaY: deltaY + bestDiffY,
+      guides,
+    };
+  }
+
+  drawSnapGuides(ctx) {
+    if (!this.activeSnapGuides || this.activeSnapGuides.length === 0) return;
+
+    ctx.save();
+    ctx.lineWidth = 1.5 / this.zoom;
+    ctx.strokeStyle = "#ff3366";
+    ctx.fillStyle = "#ff3366";
+    ctx.shadowColor = "rgba(255, 51, 102, 0.7)";
+    ctx.shadowBlur = 5 / this.zoom;
+    ctx.setLineDash([5 / this.zoom, 3 / this.zoom]);
+
+    for (const guide of this.activeSnapGuides) {
+      if (guide.type === "vertical") {
+        const x = guide.x;
+        const y1 = guide.y1 - 14 / this.zoom;
+        const y2 = guide.y2 + 14 / this.zoom;
+
+        ctx.beginPath();
+        ctx.moveTo(x, y1);
+        ctx.lineTo(x, y2);
+        ctx.stroke();
+
+        const s = 6 / this.zoom;
+        ctx.fillRect(x - s / 2, guide.y1 - s / 2, s, s);
+        ctx.fillRect(x - s / 2, guide.y2 - s / 2, s, s);
+      } else if (guide.type === "horizontal") {
+        const y = guide.y;
+        const x1 = guide.x1 - 14 / this.zoom;
+        const x2 = guide.x2 + 14 / this.zoom;
+
+        ctx.beginPath();
+        ctx.moveTo(x1, y);
+        ctx.lineTo(x2, y);
+        ctx.stroke();
+
+        const s = 6 / this.zoom;
+        ctx.fillRect(guide.x1 - s / 2, y - s / 2, s, s);
+        ctx.fillRect(guide.x2 - s / 2, y - s / 2, s, s);
+      }
+
+      if (guide.label && guide.labelPos) {
+        ctx.save();
+        ctx.setLineDash([]);
+        const fontSize = Math.max(10, 11 / Math.max(0.4, this.zoom));
+        ctx.font = `600 ${fontSize}px Inter, system-ui, sans-serif`;
+        const textW = ctx.measureText(guide.label).width;
+        const padX = 6 / this.zoom;
+        const padY = 3 / this.zoom;
+        const bw = textW + padX * 2;
+        const bh = fontSize + padY * 2;
+        ctx.fillStyle = "#ff3366";
+        this.drawRoundedRect(ctx, guide.labelPos.x - bw / 2, guide.labelPos.y - bh / 2, bw, bh, 4 / this.zoom);
+        ctx.fill();
+
+        ctx.fillStyle = "#ffffff";
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        ctx.fillText(guide.label, guide.labelPos.x, guide.labelPos.y + 0.5);
+        ctx.restore();
+      }
+    }
+
+    ctx.restore();
   }
 
   get selectedLayer() {
@@ -628,10 +924,13 @@ export class CanvasEngine {
       const deltaX = cx - (this.dragStartMouse.x - this.panX) / this.zoom;
       const deltaY = cy - (this.dragStartMouse.y - this.panY) / this.zoom;
 
+      const { snapDeltaX, snapDeltaY, guides } = this.calculateSnapping(deltaX, deltaY, e.altKey);
+      this.activeSnapGuides = guides;
+
       for (const [layer, pos] of this.dragStartMultiPositions.entries()) {
         if (!layer.locked) {
-          layer.x = Math.round(pos.x + deltaX);
-          layer.y = Math.round(pos.y + deltaY);
+          layer.x = Math.round(pos.x + snapDeltaX);
+          layer.y = Math.round(pos.y + snapDeltaY);
         }
       }
 
@@ -677,7 +976,9 @@ export class CanvasEngine {
     if (this.isDraggingLayer) {
       this.isDraggingLayer = false;
       this.dragStartMultiPositions.clear();
+      this.activeSnapGuides = [];
       this.notifyLayersChanged();
+      this.requestRender();
     }
     if (this.isRubberband) {
       this.isRubberband = false;
@@ -901,6 +1202,9 @@ export class CanvasEngine {
         }
       }
     }
+
+    // 5b. Smart Snap Guidelines
+    this.drawSnapGuides(ctx);
 
     // 6. Draw Rubberband Selection Rectangle
     if (this.isRubberband) {

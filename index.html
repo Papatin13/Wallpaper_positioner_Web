@@ -50,6 +50,13 @@
         <button id="btnZoomIn" class="btn btn-icon" title="Vergrößern (+)">
           <svg viewBox="0 0 24 24"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/></svg>
         </button>
+
+        <div class="header-divider"></div>
+
+        <!-- Magnetic Snapping / Smart Guides Toggle -->
+        <button id="btnToggleSnap" class="btn btn-icon active" title="Magnetisches Einrasten an anderen Bildern (Alt halten zum freien Bewegen)">
+          <svg viewBox="0 0 24 24"><path d="M5 3v6c0 3.87 3.13 7 7 7s7-3.13 7-7V3h-4v6c0 1.66-1.34 3-3 3s-3-1.34-3-3V3H5zm0 0h4V1H5v2zm10-2v2h4V1h-4z"/></svg>
+        </button>
       </div>
 
       <div class="header-center">
@@ -293,6 +300,15 @@
               <span class="control-label" data-i18n="cover_label">Zelle ganz ausfüllen (Cover):</span>
               <label class="switch">
                 <input id="switchCover" type="checkbox">
+                <span class="switch-slider"></span>
+              </label>
+            </div>
+
+            <!-- Magnetic Snapping (Smart Guides) toggle -->
+            <div class="control-row">
+              <span class="control-label" data-i18n="snap_magnetic_label">Magnetisches Einrasten (Snap):</span>
+              <label class="switch">
+                <input id="switchSnap" type="checkbox" checked>
                 <span class="switch-slider"></span>
               </label>
             </div>

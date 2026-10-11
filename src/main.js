@@ -67,6 +67,11 @@ class WallpaperApp {
     this.updateMonitorDropdown();
     this.updateMonitorInfo();
     this.updateStatusPill();
+
+    const btnToggleSnap = document.getElementById('btnToggleSnap');
+    if (btnToggleSnap) {
+      btnToggleSnap.title = this.canvasEngine.snapEnabled ? tr('title_snap_active') : tr('title_snap_inactive');
+    }
   }
 
   updateMonitorDropdown() {
@@ -523,6 +528,7 @@ class WallpaperApp {
     const lblMargin = document.getElementById('lblMarginValue');
     rangeMargin?.addEventListener('input', (e) => {
       this.layoutMargin = Number(e.target.value);
+      this.canvasEngine.snapMargin = this.layoutMargin;
       if (lblMargin) lblMargin.textContent = `${this.layoutMargin} px`;
       this.applyAutoLayout();
     });
@@ -542,6 +548,7 @@ class WallpaperApp {
     const lblGap = document.getElementById('lblGapValue');
     rangeGap?.addEventListener('input', (e) => {
       this.layoutGap = Number(e.target.value);
+      this.canvasEngine.snapGap = this.layoutGap;
       if (lblGap) lblGap.textContent = `${this.layoutGap} px`;
       this.applyAutoLayout();
     });
@@ -560,6 +567,32 @@ class WallpaperApp {
     document.getElementById('switchCover')?.addEventListener('change', (e) => {
       this.layoutCover = e.target.checked;
       this.applyAutoLayout();
+    });
+
+    // Magnetic Snapping (Smart Guides) Controls
+    const btnToggleSnap = document.getElementById('btnToggleSnap');
+    const switchSnap = document.getElementById('switchSnap');
+
+    const updateSnap = (enabled) => {
+      this.canvasEngine.setSnapEnabled(enabled);
+      if (btnToggleSnap) {
+        btnToggleSnap.classList.toggle('active', enabled);
+        btnToggleSnap.title = enabled ? tr('title_snap_active') : tr('title_snap_inactive');
+      }
+      if (switchSnap) {
+        switchSnap.checked = enabled;
+      }
+    };
+
+    btnToggleSnap?.addEventListener('click', () => {
+      const next = !this.canvasEngine.snapEnabled;
+      updateSnap(next);
+      this.showToast(next ? tr('toast_snap_enabled') : tr('toast_snap_disabled'));
+    });
+
+    switchSnap?.addEventListener('change', (e) => {
+      updateSnap(e.target.checked);
+      this.showToast(e.target.checked ? tr('toast_snap_enabled') : tr('toast_snap_disabled'));
     });
 
     document.getElementById('btnArrangeNow')?.addEventListener('click', () => {
