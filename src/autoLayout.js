@@ -258,21 +258,27 @@ export class AutoLayout {
     const ratio = Math.max(0.25, Math.min(0.75, baseRatio + jitter));
 
     if (splitVertical) {
-      const avail = Math.max(20.0, rw - gap);
-      const w1 = Math.round(avail * ratio);
+      const effGap = Math.min(gap, Math.max(0, rw - 20.0 * n));
+      const avail = Math.max(20.0, rw - effGap);
+      const minW1 = Math.min(avail * 0.4, 20.0 * k);
+      const maxW1 = Math.max(avail * 0.6, avail - 20.0 * (n - k));
+      const w1 = Math.max(minW1, Math.min(maxW1, Math.round(avail * ratio)));
       const w2 = Math.max(10.0, avail - w1);
       const rect1 = [rx, ry, w1, rh];
-      const rect2 = [rx + w1 + gap, ry, w2, rh];
+      const rect2 = [rx + w1 + effGap, ry, w2, rh];
       return [
         ...this.randomPartition(rect1, layers.slice(0, k), gap),
         ...this.randomPartition(rect2, layers.slice(k), gap),
       ];
     } else {
-      const avail = Math.max(20.0, rh - gap);
-      const h1 = Math.round(avail * ratio);
+      const effGap = Math.min(gap, Math.max(0, rh - 20.0 * n));
+      const avail = Math.max(20.0, rh - effGap);
+      const minH1 = Math.min(avail * 0.4, 20.0 * k);
+      const maxH1 = Math.max(avail * 0.6, avail - 20.0 * (n - k));
+      const h1 = Math.max(minH1, Math.min(maxH1, Math.round(avail * ratio)));
       const h2 = Math.max(10.0, avail - h1);
       const rect1 = [rx, ry, rw, h1];
-      const rect2 = [rx, ry + h1 + gap, rw, h2];
+      const rect2 = [rx, ry + h1 + effGap, rw, h2];
       return [
         ...this.randomPartition(rect1, layers.slice(0, k), gap),
         ...this.randomPartition(rect2, layers.slice(k), gap),
@@ -283,7 +289,7 @@ export class AutoLayout {
   /**
    * Random arrangement that is 100% strictly non-overlapping and waagerecht (0° rotation).
    */
-  static layoutRandom(layers, rx, ry, rw, rh, margin, gap, cover = false) {
+  static layoutRandom(layers, rx, ry, rw, rh, margin, gap, _cover = false) {
     const n = layers.length;
     if (n === 0) return;
 
@@ -304,10 +310,12 @@ export class AutoLayout {
       // Immer waagerecht (0° Drehung)
       layer.resetRotation();
 
-      const effW = Math.max(10.0, cellW - 2.0 * layer.borderWidth);
-      const effH = Math.max(10.0, cellH - 2.0 * layer.borderWidth);
+      const maxBw = Math.max(0.0, Math.min(layer.borderWidth, (cellW - 10.0) / 2.0, (cellH - 10.0) / 2.0));
+      const effW = Math.max(10.0, cellW - 2.0 * maxBw);
+      const effH = Math.max(10.0, cellH - 2.0 * maxBw);
 
-      layer.fitInto(effW, effH, cover);
+      // cover = false garantiert mathematisch, dass kein Bild über seine Zelle hinausragt oder Nachbarn überlappt
+      layer.fitInto(effW, effH, false);
 
       // Exakt zentriert in seiner eigenen, überschneidungsfreien Zelle
       layer.x = cellX + cellW / 2.0;
