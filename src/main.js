@@ -228,10 +228,24 @@ class WallpaperApp {
     const inputBcol = document.getElementById('inputBorderColor');
     const lblBhex = document.getElementById('lblBorderHex');
     const inputBrad = document.getElementById('inputBorderRadius');
-    if (inputBw) inputBw.value = Math.round(layer.borderWidth);
-    if (inputBcol) inputBcol.value = rgbToHex(...layer.borderColor);
-    if (lblBhex) lblBhex.textContent = rgbToHex(...layer.borderColor);
-    if (inputBrad) inputBrad.value = Math.round(layer.borderRadius);
+    const bwVal = Math.round(layer.borderWidth);
+    const radVal = Math.round(layer.borderRadius);
+    const bHex = rgbToHex(...layer.borderColor).toLowerCase();
+
+    if (inputBw) inputBw.value = bwVal;
+    if (inputBcol) inputBcol.value = bHex;
+    if (lblBhex) lblBhex.textContent = bHex;
+    if (inputBrad) inputBrad.value = radVal;
+
+    document.querySelectorAll('button[data-bw]').forEach(b => {
+      b.classList.toggle('active', Number(b.getAttribute('data-bw')) === bwVal);
+    });
+    document.querySelectorAll('button[data-rad]').forEach(b => {
+      b.classList.toggle('active', Number(b.getAttribute('data-rad')) === radVal);
+    });
+    document.querySelectorAll('button[data-bcol]').forEach(b => {
+      b.classList.toggle('active', b.getAttribute('data-bcol')?.toLowerCase() === bHex);
+    });
 
     // Shadow
     const switchShadow = document.getElementById('switchShadow');
@@ -470,11 +484,13 @@ class WallpaperApp {
       inputCustomH.value = tmp;
     });
 
-    document.querySelectorAll('.preset-chips button[data-preset]').forEach(btn => {
+    document.querySelectorAll('button[data-preset]').forEach(btn => {
       btn.addEventListener('click', () => {
         const [w, h] = btn.getAttribute('data-preset').split('x').map(Number);
-        inputCustomW.value = w;
-        inputCustomH.value = h;
+        if (inputCustomW) inputCustomW.value = w;
+        if (inputCustomH) inputCustomH.value = h;
+        btn.parentElement?.querySelectorAll('button[data-preset]').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
         this.applyCustomResolution(w, h);
       });
     });
@@ -526,10 +542,15 @@ class WallpaperApp {
       if (lblMargin) lblMargin.textContent = `${this.layoutMargin} px`;
       this.applyAutoLayout();
     });
-    document.querySelectorAll('.preset-chips button[data-margin]').forEach(btn => {
+    document.querySelectorAll('button[data-margin]').forEach(btn => {
       btn.addEventListener('click', () => {
-        rangeMargin.value = btn.getAttribute('data-margin');
-        rangeMargin.dispatchEvent(new Event('input'));
+        const val = Number(btn.getAttribute('data-margin'));
+        if (rangeMargin) rangeMargin.value = val;
+        this.layoutMargin = val;
+        if (lblMargin) lblMargin.textContent = `${val} px`;
+        btn.parentElement?.querySelectorAll('button[data-margin]').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        this.applyAutoLayout();
       });
     });
 
@@ -540,10 +561,15 @@ class WallpaperApp {
       if (lblGap) lblGap.textContent = `${this.layoutGap} px`;
       this.applyAutoLayout();
     });
-    document.querySelectorAll('.preset-chips button[data-gap]').forEach(btn => {
+    document.querySelectorAll('button[data-gap]').forEach(btn => {
       btn.addEventListener('click', () => {
-        rangeGap.value = btn.getAttribute('data-gap');
-        rangeGap.dispatchEvent(new Event('input'));
+        const val = Number(btn.getAttribute('data-gap'));
+        if (rangeGap) rangeGap.value = val;
+        this.layoutGap = val;
+        if (lblGap) lblGap.textContent = `${val} px`;
+        btn.parentElement?.querySelectorAll('button[data-gap]').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        this.applyAutoLayout();
       });
     });
 
@@ -682,10 +708,17 @@ class WallpaperApp {
       inputBw.value = Math.max(0, Number(inputBw.value) - 1);
       inputBw.dispatchEvent(new Event('change'));
     });
-    document.querySelectorAll('.preset-chips button[data-bw]').forEach(btn => {
+    // Border Width Chips (0px, 8px, etc.)
+    document.querySelectorAll('button[data-bw]').forEach(btn => {
       btn.addEventListener('click', () => {
-        inputBw.value = btn.getAttribute('data-bw');
-        inputBw.dispatchEvent(new Event('change'));
+        const bw = Number(btn.getAttribute('data-bw'));
+        if (inputBw) inputBw.value = bw;
+        const targets = selected().length > 0 ? selected() : this.canvasEngine.layers;
+        for (const l of targets) l.borderWidth = bw;
+        this.canvasEngine.defaultBorderWidth = bw;
+        btn.parentElement?.querySelectorAll('button[data-bw]').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        this.canvasEngine.requestRender();
       });
     });
 
@@ -695,14 +728,23 @@ class WallpaperApp {
     inputBcol?.addEventListener('input', (e) => {
       const rgb = hexToRgb(e.target.value);
       if (lblBhex) lblBhex.textContent = e.target.value;
-      for (const l of selected()) l.borderColor = [...rgb];
+      const targets = selected().length > 0 ? selected() : this.canvasEngine.layers;
+      for (const l of targets) l.borderColor = [...rgb];
+      this.canvasEngine.defaultBorderColor = [...rgb];
       this.canvasEngine.requestRender();
     });
-    document.querySelectorAll('.preset-chips button[data-bcol]').forEach(btn => {
+    document.querySelectorAll('button[data-bcol]').forEach(btn => {
       btn.addEventListener('click', () => {
         const hex = btn.getAttribute('data-bcol');
-        inputBcol.value = hex;
-        inputBcol.dispatchEvent(new Event('input'));
+        if (inputBcol) inputBcol.value = hex;
+        if (lblBhex) lblBhex.textContent = hex;
+        const rgb = hexToRgb(hex);
+        const targets = selected().length > 0 ? selected() : this.canvasEngine.layers;
+        for (const l of targets) l.borderColor = [...rgb];
+        this.canvasEngine.defaultBorderColor = [...rgb];
+        btn.parentElement?.querySelectorAll('button[data-bcol]').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        this.canvasEngine.requestRender();
       });
     });
 
@@ -710,7 +752,9 @@ class WallpaperApp {
     const inputBrad = document.getElementById('inputBorderRadius');
     inputBrad?.addEventListener('change', () => {
       const rad = Math.max(0, Number(inputBrad.value));
-      for (const l of selected()) l.borderRadius = rad;
+      const targets = selected().length > 0 ? selected() : this.canvasEngine.layers;
+      for (const l of targets) l.borderRadius = rad;
+      this.canvasEngine.defaultBorderRadius = rad;
       this.canvasEngine.requestRender();
     });
     document.getElementById('btnBorderRadiusInc')?.addEventListener('click', () => {
@@ -721,10 +765,17 @@ class WallpaperApp {
       inputBrad.value = Math.max(0, Number(inputBrad.value) - 2);
       inputBrad.dispatchEvent(new Event('change'));
     });
-    document.querySelectorAll('.preset-chips button[data-rad]').forEach(btn => {
+    // Border Radius Chips (0px, 16px, etc.)
+    document.querySelectorAll('button[data-rad]').forEach(btn => {
       btn.addEventListener('click', () => {
-        inputBrad.value = btn.getAttribute('data-rad');
-        inputBrad.dispatchEvent(new Event('change'));
+        const rad = Number(btn.getAttribute('data-rad'));
+        if (inputBrad) inputBrad.value = rad;
+        const targets = selected().length > 0 ? selected() : this.canvasEngine.layers;
+        for (const l of targets) l.borderRadius = rad;
+        this.canvasEngine.defaultBorderRadius = rad;
+        btn.parentElement?.querySelectorAll('button[data-rad]').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        this.canvasEngine.requestRender();
       });
     });
 
@@ -792,7 +843,7 @@ class WallpaperApp {
     });
 
     // Shadow Presets
-    document.querySelectorAll('.preset-chips button[data-shadow-preset]').forEach(btn => {
+    document.querySelectorAll('button[data-shadow-preset]').forEach(btn => {
       btn.addEventListener('click', () => {
         const type = btn.getAttribute('data-shadow-preset');
         let bl = 25, ox = 0, oy = 15, op = 55;
@@ -800,13 +851,20 @@ class WallpaperApp {
         else if (type === 'floating') { bl = 45; ox = 0; oy = 25; op = 65; }
         else if (type === 'glow') { bl = 30; ox = 0; oy = 0; op = 70; }
 
-        for (const l of selected()) {
+        const targets = selected().length > 0 ? selected() : this.canvasEngine.layers;
+        for (const l of targets) {
           l.shadowEnabled = true;
           l.shadowBlur = bl;
           l.shadowOffsetX = ox;
           l.shadowOffsetY = oy;
           l.shadowOpacity = op / 100.0;
         }
+        this.canvasEngine.defaultShadowEnabled = true;
+        this.canvasEngine.defaultShadowBlur = bl;
+        this.canvasEngine.defaultShadowOffsetX = ox;
+        this.canvasEngine.defaultShadowOffsetY = oy;
+        this.canvasEngine.defaultShadowOpacity = op / 100.0;
+
         if (switchShadow) switchShadow.checked = true;
         if (rangeSblur) rangeSblur.value = bl;
         if (lblSblur) lblSblur.textContent = `${bl} px`;
@@ -815,6 +873,8 @@ class WallpaperApp {
         if (inputSox) inputSox.value = ox;
         if (inputSoy) inputSoy.value = oy;
         if (shadowBox) shadowBox.style.opacity = '1.0';
+        btn.parentElement?.querySelectorAll('button[data-shadow-preset]').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
         this.canvasEngine.requestRender();
       });
     });
