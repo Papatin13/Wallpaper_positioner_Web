@@ -232,64 +232,86 @@ export class AutoLayout {
     return bestCandidate;
   }
 
+  /**
+   * Recursively partition available rectangle into strictly non-overlapping cells.
+   */
+  static randomPartition(rect, layers, gap) {
+    const [rx, ry, rw, rh] = rect;
+    const n = layers.length;
+    if (n === 0) return [];
+    if (n === 1) return [{ layer: layers[0], rect }];
+
+    // Choose split point: roughly balanced with slight random variation
+    const half = Math.floor(n / 2);
+    const k = Math.max(1, Math.min(n - 1, half + (Math.random() < 0.35 ? (Math.random() < 0.5 ? -1 : 1) : 0)));
+
+    // Decide split orientation:
+    // If aspect ratio is wide, prefer vertical split; if tall, prefer horizontal split; else random 50/50
+    let splitVertical = rw >= rh;
+    if (rw / Math.max(1, rh) < 1.4 && rh / Math.max(1, rw) < 1.4) {
+      splitVertical = Math.random() < 0.5;
+    }
+
+    // Base ratio by fraction of elements, plus subtle random jitter
+    const baseRatio = k / n;
+    const jitter = (Math.random() - 0.5) * 0.16;
+    const ratio = Math.max(0.25, Math.min(0.75, baseRatio + jitter));
+
+    if (splitVertical) {
+      const avail = Math.max(20.0, rw - gap);
+      const w1 = Math.round(avail * ratio);
+      const w2 = Math.max(10.0, avail - w1);
+      const rect1 = [rx, ry, w1, rh];
+      const rect2 = [rx + w1 + gap, ry, w2, rh];
+      return [
+        ...this.randomPartition(rect1, layers.slice(0, k), gap),
+        ...this.randomPartition(rect2, layers.slice(k), gap),
+      ];
+    } else {
+      const avail = Math.max(20.0, rh - gap);
+      const h1 = Math.round(avail * ratio);
+      const h2 = Math.max(10.0, avail - h1);
+      const rect1 = [rx, ry, rw, h1];
+      const rect2 = [rx, ry + h1 + gap, rw, h2];
+      return [
+        ...this.randomPartition(rect1, layers.slice(0, k), gap),
+        ...this.randomPartition(rect2, layers.slice(k), gap),
+      ];
+    }
+  }
+
+  /**
+   * Random arrangement that is 100% strictly non-overlapping and waagerecht (0° rotation).
+   */
   static layoutRandom(layers, rx, ry, rw, rh, margin, gap, cover = false) {
     const n = layers.length;
     if (n === 0) return;
 
-    const m = Math.max(10.0, Math.min(margin, Math.min(rw, rh) / 3.0));
-    const availW = Math.max(40.0, rw - 2.0 * m);
-    const availH = Math.max(40.0, rh - 2.0 * m);
+    const m = Math.max(0.0, Math.min(margin, Math.min(rw, rh) / 2.0 - 5.0));
+    const availW = Math.max(20.0, rw - 2.0 * m);
+    const availH = Math.max(20.0, rh - 2.0 * m);
+    const g = Math.max(0.0, Math.min(gap, 300.0));
 
-    // Shuffle layer order randomly
+    // Shuffle layers randomly on each call
     const shuffled = [...layers].sort(() => Math.random() - 0.5);
 
-    if (n === 1) {
-      const l = shuffled[0];
-      l.resetRotation(); // Immer waagerecht (0°)
-      l.fitInto(availW * 0.9, availH * 0.9, cover);
-      l.x = rx + rw / 2.0;
-      l.y = ry + rh / 2.0;
-      return;
-    }
+    // Partition rectangle into disjoint, non-overlapping cells
+    const placements = this.randomPartition([rx + m, ry + m, availW, availH], shuffled, g);
 
-    // Determine grid slots to guarantee good spatial distribution without clustering in one spot
-    const { cols, rows } = this.calculateGridDimensions(n, availW, availH);
-    const cellW = availW / cols;
-    const cellH = availH / rows;
+    for (const { layer, rect } of placements) {
+      const [cellX, cellY, cellW, cellH] = rect;
 
-    const slots = [];
-    for (let r = 0; r < rows; r++) {
-      for (let c = 0; c < cols; c++) {
-        slots.push({
-          cx: rx + m + c * cellW + cellW / 2.0,
-          cy: ry + m + r * cellH + cellH / 2.0,
-        });
-      }
-    }
-
-    slots.sort(() => Math.random() - 0.5);
-
-    for (let i = 0; i < n; i++) {
-      const layer = shuffled[i];
-      const slot = slots[i % slots.length];
-
-      // Immer waagerecht ausrichten (0° Drehung)
+      // Immer waagerecht (0° Drehung)
       layer.resetRotation();
 
-      // Random scale variation: 0.85x to 1.2x of the slot size
-      const scaleVariation = 0.85 + Math.random() * 0.35;
-      const targetW = Math.max(30.0, (cellW - gap) * scaleVariation);
-      const targetH = Math.max(30.0, (cellH - gap) * scaleVariation);
+      const effW = Math.max(10.0, cellW - 2.0 * layer.borderWidth);
+      const effH = Math.max(10.0, cellH - 2.0 * layer.borderWidth);
 
-      layer.fitInto(targetW, targetH, cover);
+      layer.fitInto(effW, effH, cover);
 
-      // Random jitter offset within slot (subtle position variation)
-      const jitterX = (Math.random() - 0.5) * (cellW * 0.25);
-      const jitterY = (Math.random() - 0.5) * (cellH * 0.25);
-
-      // Ensure center keeps image neatly inside canvas
-      layer.x = Math.max(rx + m + layer.width / 2.0, Math.min(rx + rw - m - layer.width / 2.0, slot.cx + jitterX));
-      layer.y = Math.max(ry + m + layer.height / 2.0, Math.min(ry + rh - m - layer.height / 2.0, slot.cy + jitterY));
+      // Exakt zentriert in seiner eigenen, überschneidungsfreien Zelle
+      layer.x = cellX + cellW / 2.0;
+      layer.y = cellY + cellH / 2.0;
     }
   }
 
