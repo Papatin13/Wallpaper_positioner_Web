@@ -566,6 +566,21 @@ class WallpaperApp {
       this.showToast('Bilder neu angeordnet');
     });
 
+    document.getElementById('btnArrangeRandom')?.addEventListener('click', () => {
+      AutoLayout.applyLayout({
+        monitor: this.canvasEngine.monitor,
+        layers: this.canvasEngine.layers,
+        mode: 'random',
+        margin: this.layoutMargin,
+        gap: this.layoutGap,
+        cover: this.layoutCover,
+      });
+      this.canvasEngine.requestRender();
+      this.onSelectionChanged(this.canvasEngine.selectedLayer, this.canvasEngine.selectedLayers);
+      this.onLayersChanged();
+      this.showToast(tr('toast_arranged_random'));
+    });
+
     // Selected Layer properties
     this.bindSelectedLayerControls();
 

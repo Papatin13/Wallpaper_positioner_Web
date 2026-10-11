@@ -232,6 +232,68 @@ export class AutoLayout {
     return bestCandidate;
   }
 
+  static layoutRandom(layers, rx, ry, rw, rh, margin, gap, cover = false) {
+    const n = layers.length;
+    if (n === 0) return;
+
+    const m = Math.max(10.0, Math.min(margin, Math.min(rw, rh) / 3.0));
+    const availW = Math.max(40.0, rw - 2.0 * m);
+    const availH = Math.max(40.0, rh - 2.0 * m);
+
+    // Shuffle layer order randomly
+    const shuffled = [...layers].sort(() => Math.random() - 0.5);
+
+    if (n === 1) {
+      const l = shuffled[0];
+      l.fitInto(availW * 0.85, availH * 0.85, cover);
+      l.rotation = Math.round((Math.random() - 0.5) * 12);
+      l.x = rx + rw / 2.0 + (Math.random() - 0.5) * (availW * 0.08);
+      l.y = ry + rh / 2.0 + (Math.random() - 0.5) * (availH * 0.08);
+      return;
+    }
+
+    // Determine grid slots to guarantee good spatial distribution without clustering in one spot
+    const { cols, rows } = this.calculateGridDimensions(n, availW, availH);
+    const cellW = availW / cols;
+    const cellH = availH / rows;
+
+    const slots = [];
+    for (let r = 0; r < rows; r++) {
+      for (let c = 0; c < cols; c++) {
+        slots.push({
+          cx: rx + m + c * cellW + cellW / 2.0,
+          cy: ry + m + r * cellH + cellH / 2.0,
+        });
+      }
+    }
+
+    slots.sort(() => Math.random() - 0.5);
+
+    for (let i = 0; i < n; i++) {
+      const layer = shuffled[i];
+      const slot = slots[i % slots.length];
+
+      // Random scale variation: 0.85x to 1.25x of the slot size
+      const scaleVariation = 0.85 + Math.random() * 0.4;
+      const targetW = Math.max(30.0, (cellW - gap) * scaleVariation);
+      const targetH = Math.max(30.0, (cellH - gap) * scaleVariation);
+
+      layer.fitInto(targetW, targetH, cover);
+
+      // Random jitter offset within slot
+      const jitterX = (Math.random() - 0.5) * (cellW * 0.3);
+      const jitterY = (Math.random() - 0.5) * (cellH * 0.3);
+
+      // Random playful rotation between -12° and +12° (polaroid tilt)
+      const rot = Math.round((Math.random() - 0.5) * 24);
+      layer.rotation = rot;
+
+      // Ensure center keeps image reasonably inside canvas
+      layer.x = Math.max(rx + m + layer.width * 0.35, Math.min(rx + rw - m - layer.width * 0.35, slot.cx + jitterX));
+      layer.y = Math.max(ry + m + layer.height * 0.35, Math.min(ry + rh - m - layer.height * 0.35, slot.cy + jitterY));
+    }
+  }
+
   static layoutSubsetInRect(layers, rx, ry, rw, rh, mode, margin, gap, cover = false) {
     const n = layers.length;
     if (n === 0) return;
@@ -241,7 +303,9 @@ export class AutoLayout {
     const availH = Math.max(20.0, rh - 2.0 * m);
     const g = Math.max(0.0, Math.min(gap, 300.0));
 
-    if (mode === 'dynamic') {
+    if (mode === 'random') {
+      this.layoutRandom(layers, rx, ry, rw, rh, margin, gap, cover);
+    } else if (mode === 'dynamic') {
       const placements = this.solveDynamicLayout([rx + m, ry + m, availW, availH], layers, g);
       for (const { layer, rect } of placements) {
         const [cellX, cellY, cellW, cellH] = rect;
