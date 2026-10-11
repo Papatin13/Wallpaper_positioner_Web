@@ -263,18 +263,22 @@ export class MonitorInfo {
   }
 
   get displayLabel() {
+    if (this.isCustom) {
+      return this.name;
+    }
     if (this.isDetected) {
       return `${this.name} (${this.width}×${this.height})`;
     }
-    if (this.isCustom) {
-      return `📐 Benutzerdefiniert (${this.width}×${this.height})`;
-    }
-    return `${this.name} (${this.width}×${this.height})`;
+    return this.name;
   }
 
   get shortLabel() {
-    if (this.isDetected) return `${this.name} (${this.width}×${this.height})`;
-    if (this.isCustom) return `📐 Custom (${this.width}×${this.height})`;
-    return `${this.name} (${this.width}×${this.height})`;
+    if (this.isCustom) {
+      return this.name;
+    }
+    if (this.isDetected) {
+      return `${this.name} (${this.width}×${this.height})`;
+    }
+    return this.name;
   }
 }

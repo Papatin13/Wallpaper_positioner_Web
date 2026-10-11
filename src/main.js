@@ -117,7 +117,8 @@ class WallpaperApp {
     const selStr = selCount > 0 ? ` • ${tr('selected_count', { count: selCount })}` : '';
     const zoomPct = Math.round(this.canvasEngine.zoom * 100);
 
-    pill.textContent = `${mon.shortLabel} • ${countStr}${selStr} • ${tr('zoom_label')}: ${zoomPct}%`;
+    const monStr = mon.isCustom ? `${mon.name} • ${mon.width}×${mon.height} px` : mon.shortLabel;
+    pill.textContent = `${monStr} • ${countStr}${selStr} • ${tr('zoom_label')}: ${zoomPct}%`;
 
     const lblCount = document.getElementById('lblLayerCount');
     if (lblCount) lblCount.textContent = layerCount.toString();
