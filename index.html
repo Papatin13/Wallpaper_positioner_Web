@@ -1,0 +1,610 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Wallpaper Positioner</title>
+  <meta name="description" content="A powerful multi-monitor image composition and wallpaper tool for your browser. Freely place, layer, transform, and arrange images on multi-monitor canvas." />
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/src/style.css" />
+</head>
+<body>
+  <div id="app">
+    <!-- Header Bar -->
+    <header class="header-bar">
+      <div class="header-left">
+        <!-- Monitor Select Dropdown -->
+        <select id="selMonitorHeader" class="select-input" title="Bildschirm-Modus"></select>
+
+        <div class="header-divider"></div>
+
+        <!-- Quick Action Buttons -->
+        <button id="btnNewProject" class="btn btn-icon" title="Neues Projekt (Strg+N)">
+          <svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8l-6-6zm4 18H6V4h7v5h5v11z"/></svg>
+        </button>
+        <button id="btnOpenProject" class="btn btn-icon" title="Projekt öffnen (Strg+O)">
+          <svg viewBox="0 0 24 24"><path d="M10 4H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2h-8l-2-2z"/></svg>
+        </button>
+        <button id="btnSaveProject" class="btn btn-icon" title="Projekt speichern (Strg+S)">
+          <svg viewBox="0 0 24 24"><path d="M17 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V7l-4-4zm-5 16c-1.66 0-3-1.34-3-3s1.34-3 3-3 3 1.34 3 3-1.34 3-3 3zm3-10H5V5h10v4z"/></svg>
+        </button>
+        <button id="btnAddImages" class="btn btn-icon" title="Bilder hinzufügen">
+          <svg viewBox="0 0 24 24"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/></svg>
+        </button>
+        <button id="btnPasteClipboard" class="btn btn-icon" title="Aus Zwischenablage einfügen (Strg+V)">
+          <svg viewBox="0 0 24 24"><path d="M19 2h-4.18C14.4.84 13.3 0 12 0c-1.3 0-2.4.84-2.82 2H5c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm-7 0c.55 0 1 .45 1 1s-.45 1-1 1-1-.45-1-1 .45-1 1-1zm7 18H5V4h2v3h10V4h2v16z"/></svg>
+        </button>
+
+        <div class="header-divider"></div>
+
+        <!-- Zoom Buttons -->
+        <button id="btnZoomOut" class="btn btn-icon" title="Verkleinern (-)">
+          <svg viewBox="0 0 24 24"><path d="M19 13H5v-2h14v2z"/></svg>
+        </button>
+        <button id="btnZoomFit" class="btn btn-icon" title="Einpassen (0)">
+          <svg viewBox="0 0 24 24"><path d="M4 4h6v2H6v4H4V4zm16 0v6h-2V6h-4V4h6zM4 20v-6h2v4h4v2H4zm16 0h-6v-2h4v-4h2v6z"/></svg>
+        </button>
+        <button id="btnZoomIn" class="btn btn-icon" title="Vergrößern (+)">
+          <svg viewBox="0 0 24 24"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/></svg>
+        </button>
+      </div>
+
+      <div class="header-center">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="#89b4fa"><path d="M21 3H3C2 3 1 4 1 5v14c0 1 1 2 2 2h18c1 0 2-1 2-2V5c0-1-1-2-2-2zm0 16H3V5h18v14zM5 15l3.5-4.5 2.5 3 3.5-4.5 4.5 6H5z"/></svg>
+        <span class="app-title-text" data-i18n="app_title">Wallpaper Positioner</span>
+      </div>
+
+      <div class="header-right">
+        <button id="btnLoadDemo" class="btn" title="Demo-Bilder laden">
+          <svg viewBox="0 0 24 24"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+          <span data-i18n="load_demo">Demo</span>
+        </button>
+
+        <button id="btnExportModal" class="btn" title="Wallpaper exportieren (Strg+E)">
+          <span data-i18n="export_wallpaper">Exportieren...</span>
+        </button>
+
+        <button id="btnSetWallpaperModal" class="btn btn-primary" title="Als aktives Desktop Wallpaper setzen">
+          <span data-i18n="set_wallpaper">Als Wallpaper setzen</span>
+        </button>
+
+        <div class="header-divider"></div>
+
+        <!-- Language Switcher DE / EN -->
+        <button id="btnToggleLang" class="btn btn-icon" title="Sprache wechseln / Switch Language">
+          <span id="lblLangCode" style="font-size: 11px; font-weight: 700;">DE</span>
+        </button>
+
+        <!-- Toggle Sidebar -->
+        <button id="btnToggleSidebar" class="btn btn-icon" title="Seitenleiste ein-/ausblenden">
+          <svg viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16h-4V5h4v14zm-6 0H5V5h8v14z"/></svg>
+        </button>
+      </div>
+    </header>
+
+    <!-- Main Workspace -->
+    <main class="workspace-container">
+      <!-- Interactive Canvas Area -->
+      <section class="canvas-container" id="canvasContainer">
+        <canvas id="viewportCanvas"></canvas>
+
+        <!-- Status Pills -->
+        <div class="status-overlay">
+          <div id="statusModePill" class="status-pill">
+            <span>Spanned (4600x1440) • 0 Bilder • Zoom: 100%</span>
+          </div>
+          <div id="statusTipPill" class="status-pill">
+            <span data-i18n="tip_drag_drop">Tipp: Bilder per Drag & Drop auf das Canvas ziehen oder Strg+V drücken</span>
+          </div>
+        </div>
+
+        <!-- Toast Notifications Overlay -->
+        <div id="toastContainer" class="toast-container"></div>
+
+        <!-- Drag & Drop Overlay -->
+        <div id="dropOverlay" class="drop-overlay">
+          <svg width="48" height="48" viewBox="0 0 24 24" fill="#00d2ff"><path d="M19.35 10.04C18.67 6.59 15.64 4 12 4 9.11 4 6.6 5.64 5.35 8.04 2.34 8.36 0 10.91 0 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5 0-2.64-2.05-4.78-4.65-4.96zM14 13v4h-4v-4H7l5-5 5 5h-3z"/></svg>
+          <div class="drop-overlay-text" data-i18n="tip_drag_drop">Bilder hier ablegen</div>
+        </div>
+      </section>
+
+      <!-- Right Sidebar -->
+      <aside class="sidebar" id="sidebar">
+        <div class="sidebar-content">
+
+          <!-- Section 1: MONITOR & RESOLUTION -->
+          <div class="sidebar-section">
+            <div class="sidebar-title">
+              <span data-i18n="section_monitor">BILDSCHIRM & AUFLÖSUNG</span>
+            </div>
+            <div id="lblMonitorInfo" class="sidebar-subtext">
+              Spanned: HDMI-A-1 (1920x1080) + DP-1 (2560x1440)<br>
+              Gesamtfläche: 4600 x 1440 px • Lücke/Trennung bei x=2040px
+            </div>
+
+            <!-- Monitor Switch Buttons -->
+            <div class="btn-group" id="monitorButtonGroup">
+              <button class="btn" data-mon="DP-1">DP-1</button>
+              <button class="btn" data-mon="HDMI-A-1">HDMI-A-1</button>
+              <button class="btn active" data-mon="__spanned__" data-i18n="mon_switch_all">🖥️ Alle</button>
+              <button class="btn" data-mon="__custom__" data-i18n="mon_switch_custom">📐 Eigene</button>
+            </div>
+
+            <!-- Custom Canvas Resolution -->
+            <div style="font-size: 11px; font-weight: 700; color: var(--text-muted); margin-top: 4px;" data-i18n="custom_res_title">
+              EIGENE CANVAS-AUFLÖSUNG
+            </div>
+            <div class="pair-row-with-action">
+              <div class="pair-item">
+                <span class="control-label" data-i18n="width_short">B:</span>
+                <div class="stepper-box">
+                  <button id="btnCustomWDec" class="stepper-btn">-</button>
+                  <input id="inputCustomW" type="number" class="stepper-input" value="1920" step="50">
+                  <button id="btnCustomWInc" class="stepper-btn">+</button>
+                </div>
+              </div>
+
+              <div class="pair-item">
+                <span class="control-label" data-i18n="height_short">H:</span>
+                <div class="stepper-box">
+                  <button id="btnCustomHDec" class="stepper-btn">-</button>
+                  <input id="inputCustomH" type="number" class="stepper-input" value="1080" step="50">
+                  <button id="btnCustomHInc" class="stepper-btn">+</button>
+                </div>
+              </div>
+
+              <button id="btnSwapDimensions" class="btn btn-icon" title="Breite und Höhe vertauschen">
+                <svg viewBox="0 0 24 24"><path d="M6.99 11L3 15l3.99 4v-3H14v-2H6.99v-3zM21 9l-3.99-4v3H10v2h7.01v3L21 9z"/></svg>
+              </button>
+            </div>
+
+            <!-- Resolution Presets -->
+            <div style="display: flex; flex-direction: column; gap: 4px;">
+              <span class="control-label" data-i18n="presets_label">Presets:</span>
+              <div class="preset-grid-6">
+                <button class="chip" data-preset="1920x1080">FHD</button>
+                <button class="chip" data-preset="2560x1440">2K</button>
+                <button class="chip" data-preset="3840x2160">4K</button>
+                <button class="chip" data-preset="3440x1440">21:9</button>
+                <button class="chip" data-preset="1080x1920">9:16</button>
+                <button class="chip" data-preset="2000x2000">1:1</button>
+              </div>
+            </div>
+
+            <button id="btnApplyCustomRes" class="btn btn-primary" style="width: 100%;" data-i18n="apply_custom_res">
+              Auflösung anwenden
+            </button>
+          </div>
+
+          <!-- Section 2: CANVAS BACKGROUND COLOR -->
+          <div class="sidebar-section">
+            <div class="sidebar-title">
+              <span data-i18n="section_bg">CANVAS HINTERGRUNDFARBE</span>
+            </div>
+
+            <div class="control-row">
+              <span class="control-label" data-i18n="pick_color">Farbe wählen:</span>
+              <div class="color-input-wrapper">
+                <input id="inputBgColor" type="color" value="#1a1b26">
+                <span id="lblBgHex" class="hex-label">#1a1b26</span>
+              </div>
+            </div>
+
+            <button id="btnMatchBg" class="btn" style="width: 100%; font-weight: 600;" data-i18n="match_bg_to_image">
+              Hintergrund an Bild anpassen
+            </button>
+
+            <div>
+              <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+                <span class="control-label" data-i18n="dominant_colors">Hauptfarben der Bilder:</span>
+                <button id="btnRefreshPalette" class="btn btn-icon" style="width: 24px; height: 24px;" title="Palette neu berechnen">
+                  <svg viewBox="0 0 24 24"><path d="M17.65 6.35A7.958 7.958 0 0 0 12 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08A5.99 5.99 0 0 1 12 18c-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z"/></svg>
+                </button>
+              </div>
+              <div id="paletteSwatches" class="palette-container"></div>
+            </div>
+
+            <div class="control-row" style="margin-top: 4px;">
+              <span class="control-label" data-i18n="always_auto_adapt">Immer automatisch anpassen:</span>
+              <label class="switch">
+                <input id="switchAutoAdaptBg" type="checkbox">
+                <span class="switch-slider"></span>
+              </label>
+            </div>
+          </div>
+
+          <!-- Section 3: LAYOUT & AUTO-ARRANGE -->
+          <div class="sidebar-section">
+            <div class="sidebar-title">
+              <span data-i18n="section_layout">LAYOUT & AUTO-ANPASSUNG</span>
+            </div>
+            <div class="sidebar-subtext" data-i18n="layout_desc">
+              Alle Bilder automatisch im Canvas anordnen:
+            </div>
+
+            <!-- Mode Selection Row -->
+            <div class="btn-group" id="layoutModeGroup">
+              <button class="btn active" data-mode="dynamic" data-i18n="mode_dynamic">Dynamisch</button>
+              <button class="btn" data-mode="grid" data-i18n="mode_grid">Raster</button>
+              <button class="btn" data-mode="row" data-i18n="mode_row">Reihe</button>
+              <button class="btn" data-mode="col" data-i18n="mode_col">Spalte</button>
+              <button class="btn" data-mode="per_monitor" data-i18n="mode_monitors">Monitore</button>
+            </div>
+
+            <!-- Canvas Margin Slider -->
+            <div class="slider-container">
+              <div class="slider-header">
+                <span data-i18n="margin_label">Randabstand (Canvas):</span>
+                <span id="lblMarginValue" class="control-value">40 px</span>
+              </div>
+              <input id="rangeMargin" type="range" min="0" max="300" value="40">
+              <div class="preset-grid-5">
+                <button class="chip" data-margin="0">0px</button>
+                <button class="chip" data-margin="20">20px</button>
+                <button class="chip" data-margin="40">40px</button>
+                <button class="chip" data-margin="80">80px</button>
+                <button class="chip" data-margin="150">150px</button>
+              </div>
+            </div>
+
+            <!-- Image Gap Slider -->
+            <div class="slider-container">
+              <div class="slider-header">
+                <span data-i18n="gap_label">Bildabstand (Zwischenraum):</span>
+                <span id="lblGapValue" class="control-value">20 px</span>
+              </div>
+              <input id="rangeGap" type="range" min="0" max="200" value="20">
+              <div class="preset-grid-5">
+                <button class="chip" data-gap="0">0px</button>
+                <button class="chip" data-gap="10">10px</button>
+                <button class="chip" data-gap="20">20px</button>
+                <button class="chip" data-gap="40">40px</button>
+                <button class="chip" data-gap="80">80px</button>
+              </div>
+            </div>
+
+            <!-- Cover toggle -->
+            <div class="control-row">
+              <span class="control-label" data-i18n="cover_label">Zelle ganz ausfüllen (Cover):</span>
+              <label class="switch">
+                <input id="switchCover" type="checkbox">
+                <span class="switch-slider"></span>
+              </label>
+            </div>
+
+            <button id="btnArrangeNow" class="btn btn-primary" style="width: 100%;" data-i18n="btn_layout_apply">
+              Bilder jetzt anordnen
+            </button>
+          </div>
+
+          <!-- Section 4: SELECTED IMAGE & STYLES (Dynamic container) -->
+          <div id="selectedLayerBox" class="sidebar-section" style="display: none;">
+            <div class="sidebar-title">
+              <span id="lblSelectedTitle" data-i18n="section_selected">AUSGEWÄHLTES BILD</span>
+            </div>
+            <div id="lblSelectedName" style="font-size: 11px; font-weight: 600; color: #cdd6f4; word-break: break-all;"></div>
+
+            <!-- Position X and Y -->
+            <div class="pair-row">
+              <div class="pair-item">
+                <span class="control-label" data-i18n="pos_x">X:</span>
+                <div class="stepper-box">
+                  <button id="btnPosXDec" class="stepper-btn">-</button>
+                  <input id="inputPosX" type="number" class="stepper-input" value="0">
+                  <button id="btnPosXInc" class="stepper-btn">+</button>
+                </div>
+              </div>
+              <div class="pair-item">
+                <span class="control-label" data-i18n="pos_y">Y:</span>
+                <div class="stepper-box">
+                  <button id="btnPosYDec" class="stepper-btn">-</button>
+                  <input id="inputPosY" type="number" class="stepper-input" value="0">
+                  <button id="btnPosYInc" class="stepper-btn">+</button>
+                </div>
+              </div>
+            </div>
+
+            <!-- Width and Height -->
+            <div class="pair-row">
+              <div class="pair-item">
+                <span class="control-label" data-i18n="size_w">B:</span>
+                <div class="stepper-box">
+                  <button id="btnSizeWDec" class="stepper-btn">-</button>
+                  <input id="inputSizeW" type="number" class="stepper-input" value="100">
+                  <button id="btnSizeWInc" class="stepper-btn">+</button>
+                </div>
+              </div>
+              <div class="pair-item">
+                <span class="control-label" data-i18n="size_h">H:</span>
+                <div class="stepper-box">
+                  <button id="btnSizeHDec" class="stepper-btn">-</button>
+                  <input id="inputSizeH" type="number" class="stepper-input" value="100">
+                  <button id="btnSizeHInc" class="stepper-btn">+</button>
+                </div>
+              </div>
+            </div>
+
+            <!-- Rotation -->
+            <div class="slider-container">
+              <div class="slider-header">
+                <span data-i18n="rotation_label">Drehung:</span>
+                <div style="display: flex; align-items: center; gap: 6px;">
+                  <span id="lblRotationValue" class="control-value">0°</span>
+                  <button id="btnResetRotation" class="chip" data-i18n="btn_reset_rotation">0°</button>
+                </div>
+              </div>
+              <input id="rangeRotation" type="range" min="0" max="360" value="0">
+            </div>
+
+            <!-- Opacity -->
+            <div class="slider-container">
+              <div class="slider-header">
+                <span data-i18n="opacity_label">Deckkraft:</span>
+                <span id="lblOpacityValue" class="control-value">100%</span>
+              </div>
+              <input id="rangeOpacity" type="range" min="0" max="100" value="100">
+            </div>
+
+            <!-- Border & Frame -->
+            <div style="border-top: 1px solid var(--card-border); padding-top: 10px; margin-top: 2px; display: flex; flex-direction: column; gap: 8px;">
+              <div class="sidebar-title" data-i18n="section_border">BILDRAHMEN & STIL</div>
+
+              <!-- Border thickness -->
+              <div class="control-row">
+                <span class="control-label" data-i18n="border_width">Rahmen-Dicke:</span>
+                <div class="stepper-with-presets">
+                  <div class="stepper-box">
+                    <button id="btnBorderWidthDec" class="stepper-btn">-</button>
+                    <input id="inputBorderWidth" type="number" class="stepper-input" value="0" min="0" max="100">
+                    <button id="btnBorderWidthInc" class="stepper-btn">+</button>
+                  </div>
+                  <div class="quick-presets">
+                    <button class="chip" data-bw="0">0px</button>
+                    <button class="chip" data-bw="8">8px</button>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Border Color -->
+              <div class="control-row">
+                <span class="control-label" data-i18n="border_color">Rahmen-Farbe:</span>
+                <div class="color-input-wrapper">
+                  <input id="inputBorderColor" type="color" value="#ffffff">
+                  <span id="lblBorderHex" class="hex-label">#ffffff</span>
+                </div>
+              </div>
+
+              <!-- Border Color Presets -->
+              <div class="preset-grid-4">
+                <button class="chip" data-bcol="#ffffff" data-i18n="color_white">Weiß</button>
+                <button class="chip" data-bcol="#000000" data-i18n="color_black">Schwarz</button>
+                <button class="chip" data-bcol="#00d2ff" data-i18n="color_accent">Akzent</button>
+                <button class="chip" data-bcol="#f5c542" data-i18n="color_gold">Gold</button>
+              </div>
+
+              <!-- Border Corner Radius -->
+              <div class="control-row">
+                <span class="control-label" data-i18n="border_radius">Eckenrundung:</span>
+                <div class="stepper-with-presets">
+                  <div class="stepper-box">
+                    <button id="btnBorderRadiusDec" class="stepper-btn">-</button>
+                    <input id="inputBorderRadius" type="number" class="stepper-input" value="0" min="0" max="200">
+                    <button id="btnBorderRadiusInc" class="stepper-btn">+</button>
+                  </div>
+                  <div class="quick-presets">
+                    <button class="chip" data-rad="0">0px</button>
+                    <button class="chip" data-rad="16">16px</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Drop Shadow & 3D Effect -->
+            <div style="border-top: 1px solid var(--card-border); padding-top: 10px; margin-top: 2px; display: flex; flex-direction: column; gap: 8px;">
+              <div class="sidebar-title" data-i18n="section_shadow">SCHLAGSCHATTEN & 3D-EFFEKT</div>
+
+              <div class="control-row">
+                <span class="control-label" data-i18n="enable_shadow">Schatten aktivieren:</span>
+                <label class="switch">
+                  <input id="switchShadow" type="checkbox">
+                  <span class="switch-slider"></span>
+                </label>
+              </div>
+
+              <div id="shadowControlsBox" style="display: flex; flex-direction: column; gap: 8px;">
+                <!-- Shadow Blur -->
+                <div class="slider-container">
+                  <div class="slider-header">
+                    <span data-i18n="shadow_blur">Weichzeichner (Blur):</span>
+                    <span id="lblShadowBlur" class="control-value">20 px</span>
+                  </div>
+                  <input id="rangeShadowBlur" type="range" min="1" max="100" value="20">
+                </div>
+
+                <!-- Shadow Opacity -->
+                <div class="slider-container">
+                  <div class="slider-header">
+                    <span data-i18n="shadow_opacity">Deckkraft:</span>
+                    <span id="lblShadowOpacity" class="control-value">50%</span>
+                  </div>
+                  <input id="rangeShadowOpacity" type="range" min="0" max="100" value="50">
+                </div>
+
+                <!-- Offset X and Offset Y -->
+                <div class="pair-row">
+                  <div class="pair-item">
+                    <span class="control-label" style="font-size: 11px;">Versatz X:</span>
+                    <div class="stepper-box">
+                      <button id="btnShadowOxDec" class="stepper-btn">-</button>
+                      <input id="inputShadowOx" type="number" class="stepper-input" value="0" min="-150" max="150">
+                      <button id="btnShadowOxInc" class="stepper-btn">+</button>
+                    </div>
+                  </div>
+
+                  <div class="pair-item">
+                    <span class="control-label" style="font-size: 11px;">Versatz Y:</span>
+                    <div class="stepper-box">
+                      <button id="btnShadowOyDec" class="stepper-btn">-</button>
+                      <input id="inputShadowOy" type="number" class="stepper-input" value="15" min="-150" max="150">
+                      <button id="btnShadowOyInc" class="stepper-btn">+</button>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Shadow Color -->
+                <div class="control-row">
+                  <span class="control-label" data-i18n="shadow_color">Schatten-Farbe:</span>
+                  <div class="color-input-wrapper">
+                    <input id="inputShadowColor" type="color" value="#000000">
+                    <span id="lblShadowHex" class="hex-label">#000000</span>
+                  </div>
+                </div>
+
+                <!-- Shadow Presets -->
+                <div class="preset-grid-4">
+                  <button class="chip" data-shadow-preset="subtle" data-i18n="shadow_preset_subtle">Dezent</button>
+                  <button class="chip" data-shadow-preset="standard" data-i18n="shadow_preset_standard">Standard</button>
+                  <button class="chip" data-shadow-preset="floating" data-i18n="shadow_preset_floating">Schwebend</button>
+                  <button class="chip" data-shadow-preset="glow" data-i18n="shadow_preset_glow">Glow</button>
+                </div>
+              </div>
+            </div>
+
+            <!-- Apply style to all images -->
+            <button id="btnApplyStyleAll" class="btn" style="width: 100%; margin-top: 4px;" data-i18n="apply_style_all">
+              Stil auf alle Bilder anwenden
+            </button>
+            <div class="sidebar-subtext" style="font-size: 11px;" data-i18n="style_hint">
+              Neue Bilder übernehmen automatisch die aktuellen Rahmen- und Schatteneinstellungen.
+            </div>
+
+            <!-- Quick Align -->
+            <div style="border-top: 1px solid var(--card-border); padding-top: 10px; margin-top: 2px;">
+              <div class="sidebar-title" data-i18n="quick_align">SCHNELL-AUSRICHTUNG</div>
+              <div class="btn-group">
+                <button id="btnAlignCenter" class="btn" data-i18n="center_label">Zentrieren</button>
+                <button id="btnAlignFit" class="btn" data-i18n="fit_label">Einpassen</button>
+                <button id="btnAlignFill" class="btn" data-i18n="fill_label">Ausfüllen</button>
+              </div>
+            </div>
+
+            <!-- Layer Order Actions -->
+            <div style="border-top: 1px solid var(--card-border); padding-top: 10px; margin-top: 2px;">
+              <div class="sidebar-title" data-i18n="layer_order">EBENEN-REIHENFOLGE</div>
+              <div style="display: flex; gap: 6px;">
+                <button id="btnLayerFront" class="btn btn-icon" title="Ganz nach vorn">
+                  <svg viewBox="0 0 24 24"><path d="M4 4h16v2H4V4zm8 4l6 6h-4v6h-4v-6H6l6-6z"/></svg>
+                </button>
+                <button id="btnLayerUp" class="btn btn-icon" title="Ebene vor">
+                  <svg viewBox="0 0 24 24"><path d="M7 14l5-5 5 5H7z"/></svg>
+                </button>
+                <button id="btnLayerDown" class="btn btn-icon" title="Ebene zurück">
+                  <svg viewBox="0 0 24 24"><path d="M7 10l5 5 5-5H7z"/></svg>
+                </button>
+                <button id="btnLayerBack" class="btn btn-icon" title="Ganz nach hinten">
+                  <svg viewBox="0 0 24 24"><path d="M4 18h16v2H4v-2zm8-4l6-6h-4V2h-4v6H6l6 6z"/></svg>
+                </button>
+                <button id="btnLayerDelete" class="btn btn-icon btn-destructive" style="margin-left: auto;" title="Ausgewählte löschen">
+                  <svg viewBox="0 0 24 24"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg>
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Section 5: LAYERS OVERVIEW -->
+          <div class="sidebar-section">
+            <div class="sidebar-title">
+              <span data-i18n="layer_overview">EBENEN-ÜBERSICHT</span>
+              <span id="lblLayerCount" style="font-size: 11px; color: var(--text-muted);">0</span>
+            </div>
+            <div id="layersList" class="layers-list"></div>
+          </div>
+
+        </div>
+      </aside>
+    </main>
+
+    <!-- Hidden File Inputs -->
+    <input id="inputOpenFile" type="file" accept=".wpp,application/json" style="display: none;" />
+    <input id="inputAddImages" type="file" accept="image/*" multiple style="display: none;" />
+
+    <!-- Export Modal -->
+    <div id="exportModal" class="modal-backdrop">
+      <div class="modal-box">
+        <div class="modal-header">
+          <div class="modal-title" data-i18n="export_title">Wallpaper exportieren</div>
+          <button id="btnCloseExportModal" class="btn btn-icon">
+            <svg viewBox="0 0 24 24"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+          </button>
+        </div>
+        <div class="modal-body">
+          <div class="sidebar-subtext" data-i18n="export_desc">
+            Lade das fertige Wallpaper in nativer Auflösung herunter oder speichere separate Zuschnitte für jeden Monitor.
+          </div>
+
+          <button id="btnExportFullPng" class="btn btn-primary" style="height: 40px; justify-content: flex-start; padding: 0 14px;">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M19.35 10.04C18.67 6.59 15.64 4 12 4 9.11 4 6.6 5.64 5.35 8.04 2.34 8.36 0 10.91 0 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5 0-2.64-2.05-4.78-4.65-4.96zM17 13l-5 5-5-5h3V9h4v4h3z"/></svg>
+            <span data-i18n="export_single_btn">Gesamtes Wallpaper herunterladen (PNG)</span>
+          </button>
+
+          <button id="btnExportSlicesZip" class="btn" style="height: 40px; justify-content: flex-start; padding: 0 14px;">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M20 6h-8l-2-2H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2zm-6 10H6v-2h8v2zm4-4H6v-2h12v2z"/></svg>
+            <span data-i18n="export_slices_btn">Monitor-Zuschnitte herunterladen (ZIP)</span>
+          </button>
+
+          <button id="btnCopyClipboardExport" class="btn" style="height: 40px; justify-content: flex-start; padding: 0 14px;">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"/></svg>
+            <span data-i18n="copy_clipboard_btn">In Zwischenablage kopieren</span>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Set as Wallpaper Modal -->
+    <div id="wallpaperModal" class="modal-backdrop">
+      <div class="modal-box">
+        <div class="modal-header">
+          <div class="modal-title" data-i18n="set_wallpaper">Als Wallpaper setzen</div>
+          <button id="btnCloseWallpaperModal" class="btn btn-icon">
+            <svg viewBox="0 0 24 24"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+          </button>
+        </div>
+        <div class="modal-body">
+          <div class="sidebar-subtext" style="font-weight: 600; color: #ffffff;" data-i18n="set_wallpaper_instructions">
+            Als Wallpaper einrichten:
+          </div>
+
+          <div style="background: rgba(0, 0, 0, 0.25); border: 1px solid var(--card-border); border-radius: var(--radius-md); padding: 12px; display: flex; flex-direction: column; gap: 8px; font-size: 12px;">
+            <div>
+              <strong style="color: #89b4fa;">🚀 Linux Wayland / Hyprland:</strong><br>
+              <span data-i18n="set_wallpaper_hyprland">Lade die Slices herunter und wende sie mit `hyprpaper`, `swww` oder `awww` an:</span><br>
+              <code style="display: block; margin-top: 4px; padding: 6px; background: #11111b; border-radius: 4px; font-family: monospace; color: #00d2ff;">
+                swww img -o DP-1 wallpaper_DP-1.png &amp;&amp; swww img -o HDMI-A-1 wallpaper_HDMI-A-1.png
+              </code>
+            </div>
+
+            <div style="margin-top: 6px;">
+              <strong style="color: #a6e3a1;">🖥️ GNOME / KDE:</strong><br>
+              <span data-i18n="set_wallpaper_gnome">Rechtsklick auf die Datei → "Als Schreibtischhintergrund festlegen".</span>
+            </div>
+
+            <div style="margin-top: 6px;">
+              <strong style="color: #f9e2af;">🪟 Windows / macOS:</strong><br>
+              <span data-i18n="set_wallpaper_windows">Rechtsklick auf die heruntergeladene Datei → "Als Desktophintergrund festlegen".</span>
+            </div>
+          </div>
+
+          <button id="btnQuickDownloadWallpaper" class="btn btn-primary" style="height: 38px;">
+            <span data-i18n="export_single_btn">Wallpaper jetzt herunterladen</span>
+          </button>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <script type="module" src="/src/main.js"></script>
+</body>
+</html>
