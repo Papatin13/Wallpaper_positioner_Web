@@ -1036,3 +1036,50 @@ input[type="color"]::-webkit-color-swatch {
     max-height: 90vh;
   }
 }
+
+
+/* Monitor Presets Grid in Sidebar */
+.monitor-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 6px;
+  width: 100%;
+}
+
+.monitor-grid .btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: auto;
+  min-height: 44px;
+  padding: 6px 4px;
+  gap: 2px;
+  text-align: center;
+}
+
+.monitor-grid .btn .btn-title {
+  font-weight: 600;
+  font-size: 11.5px;
+  color: var(--text-main);
+  line-height: 1.2;
+}
+
+.monitor-grid .btn .btn-sub {
+  font-size: 10px;
+  color: var(--text-muted);
+  line-height: 1.2;
+}
+
+.monitor-grid .btn.active {
+  background: rgba(53, 132, 228, 0.25);
+  border-color: var(--accent-blue);
+}
+
+.monitor-grid .btn.active .btn-title {
+  color: #89b4fa;
+}
+
+.monitor-grid .btn.active .btn-sub {
+  color: #cdd6f4;
+}

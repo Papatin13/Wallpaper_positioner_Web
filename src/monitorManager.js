@@ -1,123 +1,102 @@
 /**
  * Monitor Manager for Wallpaper Positioner Web.
- * Supports:
- * 1. Eigener Bildschirm (Automatische Erkennung des aktuellen Geräts / Displays)
- * 2. Benutzerdefinierte Auflösung (Custom Resolution mit Eingabe & Presets)
+ * Provides clear display presets (4K, 2K, Full HD, Smartphone, Ultrawide)
+ * with explicit resolutions, and custom resolution support.
  */
 
 import { MonitorInfo } from './models.js';
 
-/**
- * Ermittelt die echte physische Bildschirmauflösung des aktuellen Geräts.
- */
-export function detectCurrentScreen() {
-  if (typeof window === 'undefined') {
-    return {
-      width: 1920,
-      height: 1080,
-      dpr: 1,
-      isMobile: false,
-      isPortrait: false,
-      label: 'Standard Display',
-    };
-  }
-
-  const dpr = window.devicePixelRatio || 1;
-  const isMobile = /Android|iPhone|iPad|iPod|webOS|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)
-    || (window.matchMedia && window.matchMedia('(max-width: 820px)').matches && 'ontouchstart' in window);
-
-  // CSS Pixel des Displays
-  let rawW = window.screen?.width || window.innerWidth || 1920;
-  let rawH = window.screen?.height || window.innerHeight || 1080;
-
-  let isPortrait = rawH > rawW;
-  if (window.screen?.orientation && window.screen.orientation.type) {
-    isPortrait = window.screen.orientation.type.includes('portrait');
-  }
-
-  // Echte physische Pixel berechnen
-  let physW = Math.round(rawW * (dpr > 1 ? dpr : 1));
-  let physH = Math.round(rawH * (dpr > 1 ? dpr : 1));
-
-  physW = Math.max(320, physW);
-  physH = Math.max(320, physH);
-
-  const label = isMobile
-    ? (isPortrait ? 'Smartphone (Hochformat)' : 'Smartphone (Querformat)')
-    : 'Desktop / Monitor';
-
-  return {
-    width: physW,
-    height: physH,
-    rawW,
-    rawH,
-    dpr,
-    isMobile,
-    isPortrait,
-    label,
-  };
-}
-
 export class MonitorManager {
   constructor() {
     this.monitors = [];
-    this.customMonitor = new MonitorInfo({
-      id: '__custom__',
-      name: '📐 Benutzerdefiniert',
-      description: 'Eigene Auflösung festlegen',
-      width: 1920,
-      height: 1080,
-      refreshRate: 60,
-      isCustom: true,
-    });
+    this.customMonitor = null;
+    this.defaultMonitor = null;
 
     this.initDefaultMonitors();
   }
 
   initDefaultMonitors() {
-    const detected = detectCurrentScreen();
-    this.detectedInfo = detected;
+    const isMobile = (typeof window !== 'undefined') && (
+      /Android|iPhone|iPad|iPod|webOS|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) ||
+      (window.matchMedia && window.matchMedia('(max-width: 820px)').matches && 'ontouchstart' in window)
+    );
 
-    // 1. Eigener Bildschirm (Automatisch erkannt & Standard!)
-    this.deviceMonitor = new MonitorInfo({
-      id: 'current-device',
-      name: detected.isMobile ? '📱 Eigener Bildschirm' : '🖥️ Eigener Bildschirm',
-      description: `${detected.label} (${detected.width}×${detected.height})`,
-      width: detected.width,
-      height: detected.height,
-      refreshRate: 60,
-      isDetected: true,
+    // 1. Full HD
+    const fhd = new MonitorInfo({
+      id: 'res-fhd',
+      name: 'Full HD (1920 × 1080)',
+      description: 'Standard 1080p 16:9',
+      width: 1920,
+      height: 1080,
     });
 
-    // 2. Benutzerdefiniert (Custom Resolution)
+    // 2. 2K QHD
+    const qhd = new MonitorInfo({
+      id: 'res-2k',
+      name: '2K QHD (2560 × 1440)',
+      description: 'WQHD 1440p 16:9',
+      width: 2560,
+      height: 1440,
+    });
+
+    // 3. 4K UHD
+    const uhd4k = new MonitorInfo({
+      id: 'res-4k',
+      name: '4K UHD (3840 × 2160)',
+      description: 'Ultra HD 4K 16:9',
+      width: 3840,
+      height: 2160,
+    });
+
+    // 4. Smartphone FHD+
+    const phone = new MonitorInfo({
+      id: 'res-phone',
+      name: 'Smartphone (1080 × 2400)',
+      description: 'Handy FHD+ 9:20',
+      width: 1080,
+      height: 2400,
+    });
+
+    // 5. iPhone / OLED
+    const iphone = new MonitorInfo({
+      id: 'res-iphone',
+      name: 'iPhone / OLED (1170 × 2532)',
+      description: 'Retina 9:19.5',
+      width: 1170,
+      height: 2532,
+    });
+
+    // 6. Ultrawide 21:9
+    const ultrawide = new MonitorInfo({
+      id: 'res-ultrawide',
+      name: 'Ultrawide (3440 × 1440)',
+      description: '21:9 Breitbild',
+      width: 3440,
+      height: 1440,
+    });
+
+    // 7. Benutzerdefiniert (Custom Resolution - KEINE Klammern!)
     this.customMonitor = new MonitorInfo({
       id: '__custom__',
-      name: '📐 Benutzerdefiniert',
+      name: 'Benutzerdefiniert',
       description: 'Eigene Auflösung festlegen',
       width: 1920,
       height: 1080,
-      refreshRate: 60,
       isCustom: true,
     });
 
-    // Nur Eigener Bildschirm und Custom zulassen!
     this.monitors = [
-      this.deviceMonitor,
+      fhd,
+      qhd,
+      uhd4k,
+      phone,
+      iphone,
+      ultrawide,
       this.customMonitor,
     ];
-  }
 
-  /**
-   * Bildschirm neu vermessen (z.B. nach Drehen des Handys oder Fenstergrößenänderung)
-   */
-  reDetectDeviceScreen() {
-    const detected = detectCurrentScreen();
-    this.detectedInfo = detected;
-    this.deviceMonitor.width = detected.width;
-    this.deviceMonitor.height = detected.height;
-    this.deviceMonitor.description = `${detected.label} (${detected.width}×${detected.height})`;
-    this.deviceMonitor.name = detected.isMobile ? '📱 Eigener Bildschirm' : '🖥️ Eigener Bildschirm';
-    return this.deviceMonitor;
+    // Auf mobilen Geräten standardmäßig Smartphone wählen, sonst Full HD
+    this.defaultMonitor = isMobile ? phone : fhd;
   }
 
   setCustomResolution(width, height) {
@@ -127,7 +106,7 @@ export class MonitorManager {
   }
 
   getMonitorById(id) {
-    return this.monitors.find(m => m.id === id) || this.monitors[0];
+    return this.monitors.find(m => m.id === id) || this.defaultMonitor;
   }
 
   /**

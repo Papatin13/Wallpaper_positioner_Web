@@ -17,9 +17,7 @@
       <div class="header-left">
         <!-- Monitor Select Dropdown -->
         <select id="selMonitorHeader" class="select-input" title="Bildschirm-Modus"></select>
-        <button id="btnAutoDetectScreen" class="btn btn-icon" title="Bildschirmauflösung automatisch erkennen">
-          <svg viewBox="0 0 24 24"><path d="M17 1.01L7 1c-1.1 0-2 .9-2 2v18c0 1.1.9 2 2 2h10c1.1 0 2-.9 2-2V3c0-1.1-.9-1.99-2-1.99zM17 19H7V5h10v14z"/></svg>
-        </button>
+
 
         <div class="header-divider"></div>
 
@@ -126,9 +124,35 @@
             </div>
 
             <!-- Monitor Switch Buttons -->
-            <div class="btn-group" id="monitorButtonGroup">
-              <button class="btn active" data-mon="current-device">📱 Eigener Bildschirm</button>
-              <button class="btn" data-mon="__custom__">📐 Benutzerdefiniert</button>
+            <div class="monitor-grid" id="monitorButtonGroup">
+              <button class="btn active" data-mon="res-fhd">
+                <span class="btn-title">HD 1080p</span>
+                <span class="btn-sub">1920 × 1080</span>
+              </button>
+              <button class="btn" data-mon="res-2k">
+                <span class="btn-title">2K QHD</span>
+                <span class="btn-sub">2560 × 1440</span>
+              </button>
+              <button class="btn" data-mon="res-4k">
+                <span class="btn-title">4K UHD</span>
+                <span class="btn-sub">3840 × 2160</span>
+              </button>
+              <button class="btn" data-mon="res-phone">
+                <span class="btn-title">Smartphone</span>
+                <span class="btn-sub">1080 × 2400</span>
+              </button>
+              <button class="btn" data-mon="res-iphone">
+                <span class="btn-title">iPhone / OLED</span>
+                <span class="btn-sub">1170 × 2532</span>
+              </button>
+              <button class="btn" data-mon="res-ultrawide">
+                <span class="btn-title">Ultrawide</span>
+                <span class="btn-sub">3440 × 1440</span>
+              </button>
+              <button class="btn" data-mon="__custom__" style="grid-column: span 2;">
+                <span class="btn-title">📐 Benutzerdefiniert</span>
+                <span class="btn-sub">Freie Pixel-Eingabe</span>
+              </button>
             </div>
 
             <!-- Custom Canvas Resolution -->

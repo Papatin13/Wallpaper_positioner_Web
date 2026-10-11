@@ -336,34 +336,11 @@ class WallpaperApp {
       this.updateMonitorInfo();
     });
 
-    // Auto-detect screen resolution button
-    document.getElementById('btnAutoDetectScreen')?.addEventListener('click', () => {
-      const mon = this.monitorManager.reDetectDeviceScreen();
-      this.canvasEngine.setMonitor(mon);
-      this.updateMonitorDropdown();
-      this.updateMonitorInfo();
-      this.showToast(tr('toast_screen_detected', { w: mon.width, h: mon.height }));
-    });
-
     // Mobile close sidebar button
     document.getElementById('btnCloseSidebarMobile')?.addEventListener('click', () => {
       document.getElementById('sidebar')?.classList.add('collapsed');
       setTimeout(() => this.canvasEngine.resizeCanvas(), 210);
     });
-
-    // Listen to orientation change on mobile devices
-    const onScreenChange = () => {
-      if (this.canvasEngine.monitor.id === 'current-device') {
-        const mon = this.monitorManager.reDetectDeviceScreen();
-        this.canvasEngine.setMonitor(mon);
-        this.updateMonitorDropdown();
-        this.updateMonitorInfo();
-      }
-    };
-    if (typeof window !== 'undefined' && window.screen?.orientation) {
-      window.screen.orientation.addEventListener('change', onScreenChange);
-    }
-    window.addEventListener('orientationchange', onScreenChange);
 
     document.querySelectorAll('#monitorButtonGroup .btn').forEach(btn => {
       btn.addEventListener('click', () => {
@@ -384,7 +361,7 @@ class WallpaperApp {
         this.canvasEngine.layers = [];
         this.canvasEngine.clearSelection();
         ProjectManager.clearSession();
-        const mon = this.monitorManager.reDetectDeviceScreen();
+        const mon = this.monitorManager.defaultMonitor;
         this.canvasEngine.setMonitor(mon);
         this.updateMonitorDropdown();
         this.updateMonitorInfo();
@@ -1257,9 +1234,9 @@ class WallpaperApp {
       }
     }
 
-    // Default: Clean start with user's detected screen!
-    const detectedMon = this.monitorManager.deviceMonitor;
-    this.canvasEngine.setMonitor(detectedMon);
+    // Default: Clean start with preset display resolution!
+    const defaultMon = this.monitorManager.defaultMonitor;
+    this.canvasEngine.setMonitor(defaultMon);
     this.updateMonitorDropdown();
     this.updateMonitorInfo();
     this.canvasEngine.fitToView();
