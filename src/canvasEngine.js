@@ -358,6 +358,203 @@ export class CanvasEngine {
     ctx.restore();
   }
 
+  isCornerHandle(type) {
+    return (
+      type === HandleType.BOTTOM_RIGHT ||
+      type === HandleType.TOP_LEFT ||
+      type === HandleType.TOP_RIGHT ||
+      type === HandleType.BOTTOM_LEFT
+    );
+  }
+
+  calculateResizeSnapping(handleType, rawW, rawH, altKey = false) {
+    if (!this.snapEnabled || altKey || !this.selectedLayer) {
+      return { snappedW: rawW, snappedH: rawH, guides: [] };
+    }
+
+    const layer = this.selectedLayer;
+    const ar = layer.aspectRatio || (layer.origWidth && layer.origHeight ? layer.origWidth / layer.origHeight : (rawW / Math.max(1, rawH)));
+    const bw = layer.borderWidth || 0;
+
+    const { cx: worldCenterX, cy: worldCenterY } = this.getLayerCanvasPos(layer);
+
+    const curRight = worldCenterX + rawW / 2 + bw;
+    const curLeft = worldCenterX - rawW / 2 - bw;
+    const curBottom = worldCenterY + rawH / 2 + bw;
+    const curTop = worldCenterY - rawH / 2 - bw;
+
+    const snapThreshold = 10.0 / Math.max(0.15, this.zoom);
+    const snapGap = typeof this.snapGap === "number" ? this.snapGap : 20.0;
+
+    const otherLayers = this.layers.filter(l => l.visible && l !== layer);
+
+    let bestSnap = null;
+    let minDiff = Infinity;
+
+    const affectsRight = handleType === HandleType.RIGHT || handleType === HandleType.BOTTOM_RIGHT || handleType === HandleType.TOP_RIGHT;
+    const affectsLeft = handleType === HandleType.LEFT || handleType === HandleType.BOTTOM_LEFT || handleType === HandleType.TOP_LEFT;
+    const affectsBottom = handleType === HandleType.BOTTOM || handleType === HandleType.BOTTOM_RIGHT || handleType === HandleType.BOTTOM_LEFT;
+    const affectsTop = handleType === HandleType.TOP || handleType === HandleType.TOP_RIGHT || handleType === HandleType.TOP_LEFT;
+    const isCorner = this.isCornerHandle(handleType);
+
+    const testXEdge = (targetX, isRightEdge, label = null) => {
+      const diffEdge = isRightEdge ? (targetX - curRight) : (curLeft - targetX);
+      const absDiff = Math.abs(diffEdge);
+      if (absDiff <= snapThreshold && absDiff < minDiff) {
+        minDiff = absDiff;
+        let candW = Math.max(20, rawW + (isRightEdge ? diffEdge * 2 : -diffEdge * 2));
+        let candH = rawH;
+        if (isCorner) {
+          candH = Math.max(20, candW / ar);
+        }
+        bestSnap = {
+          snappedW: candW,
+          snappedH: candH,
+          guide: {
+            type: "vertical",
+            x: Math.round(targetX),
+            y1: Math.min(curTop, worldCenterY - candH / 2 - bw),
+            y2: Math.max(curBottom, worldCenterY + candH / 2 + bw),
+            label,
+          },
+        };
+      }
+    };
+
+    const testYEdge = (targetY, isBottomEdge, label = null) => {
+      const diffEdge = isBottomEdge ? (targetY - curBottom) : (curTop - targetY);
+      const absDiff = Math.abs(diffEdge);
+      if (absDiff <= snapThreshold && absDiff < minDiff) {
+        minDiff = absDiff;
+        let candH = Math.max(20, rawH + (isBottomEdge ? diffEdge * 2 : -diffEdge * 2));
+        let candW = rawW;
+        if (isCorner) {
+          candW = Math.max(20, candH * ar);
+        }
+        bestSnap = {
+          snappedW: candW,
+          snappedH: candH,
+          guide: {
+            type: "horizontal",
+            y: Math.round(targetY),
+            x1: Math.min(curLeft, worldCenterX - candW / 2 - bw),
+            x2: Math.max(curRight, worldCenterX + candW / 2 + bw),
+            label,
+          },
+        };
+      }
+    };
+
+    for (const ol of otherLayers) {
+      const { cx: oWorldX, cy: oWorldY } = this.getLayerCanvasPos(ol);
+      const oB = this.getLayerBounds(ol, oWorldX, oWorldY);
+
+      if (affectsRight) {
+        testXEdge(oB.left, true);
+        testXEdge(oB.right, true);
+        if (snapGap > 0) testXEdge(oB.left - snapGap, true, `${snapGap}px`);
+      }
+      if (affectsLeft) {
+        testXEdge(oB.right, false);
+        testXEdge(oB.left, false);
+        if (snapGap > 0) testXEdge(oB.right + snapGap, false, `${snapGap}px`);
+      }
+      if (affectsBottom) {
+        testYEdge(oB.top, true);
+        testYEdge(oB.bottom, true);
+        if (snapGap > 0) testYEdge(oB.top - snapGap, true, `${snapGap}px`);
+      }
+      if (affectsTop) {
+        testYEdge(oB.bottom, false);
+        testYEdge(oB.top, false);
+        if (snapGap > 0) testYEdge(oB.bottom + snapGap, false, `${snapGap}px`);
+      }
+
+      // Match exact width of other image
+      if (affectsRight || affectsLeft) {
+        const diffW = Math.abs(rawW - ol.width);
+        if (diffW <= snapThreshold && diffW < minDiff) {
+          minDiff = diffW;
+          const candW = ol.width;
+          const candH = isCorner ? Math.max(20, candW / ar) : rawH;
+          bestSnap = {
+            snappedW: candW,
+            snappedH: candH,
+            guide: {
+              type: "vertical",
+              x: Math.round(affectsRight ? (worldCenterX + candW / 2 + bw) : (worldCenterX - candW / 2 - bw)),
+              y1: Math.min(curTop, oB.top),
+              y2: Math.max(curBottom, oB.bottom),
+              label: `W: ${Math.round(candW)}px`,
+            },
+          };
+        }
+      }
+
+      // Match exact height of other image
+      if (affectsBottom || affectsTop) {
+        const diffH = Math.abs(rawH - ol.height);
+        if (diffH <= snapThreshold && diffH < minDiff) {
+          minDiff = diffH;
+          const candH = ol.height;
+          const candW = isCorner ? Math.max(20, candH * ar) : rawW;
+          bestSnap = {
+            snappedW: candW,
+            snappedH: candH,
+            guide: {
+              type: "horizontal",
+              y: Math.round(affectsBottom ? (worldCenterY + candH / 2 + bw) : (worldCenterY - candH / 2 - bw)),
+              x1: Math.min(curLeft, oB.left),
+              x2: Math.max(curRight, oB.right),
+              label: `H: ${Math.round(candH)}px`,
+            },
+          };
+        }
+      }
+    }
+
+    // Monitor boundaries & margins
+    const monList = (this.monitor.isSpanned && this.monitor.subMonitors && this.monitor.subMonitors.length > 0)
+      ? this.monitor.subMonitors
+      : [this.monitor];
+
+    const m = Math.max(0, this.snapMargin || 0);
+
+    for (const sub of monList) {
+      const rx = this.monitor.isSpanned ? sub.relX : 0.0;
+      const ry = this.monitor.isSpanned ? sub.relY : 0.0;
+      const rw = sub.width;
+      const rh = sub.height;
+
+      if (affectsRight) {
+        testXEdge(rx + rw, true);
+        if (m > 0) testXEdge(rx + rw - m, true, `${m}px`);
+      }
+      if (affectsLeft) {
+        testXEdge(rx, false);
+        if (m > 0) testXEdge(rx + m, false, `${m}px`);
+      }
+      if (affectsBottom) {
+        testYEdge(ry + rh, true);
+        if (m > 0) testYEdge(ry + rh - m, true, `${m}px`);
+      }
+      if (affectsTop) {
+        testYEdge(ry, false);
+        if (m > 0) testYEdge(ry + m, false, `${m}px`);
+      }
+    }
+
+    if (bestSnap) {
+      return {
+        snappedW: Math.round(bestSnap.snappedW),
+        snappedH: Math.round(bestSnap.snappedH),
+        guides: [bestSnap.guide],
+      };
+    }
+
+    return { snappedW: rawW, snappedH: rawH, guides: [] };
+  }
+
   get selectedLayer() {
     return this.selectedLayers.length > 0 ? this.selectedLayers[this.selectedLayers.length - 1] : null;
   }
@@ -899,19 +1096,43 @@ export class CanvasEngine {
           case HandleType.TOP:
             newH = Math.max(20, initial.height - ldy * 2);
             break;
-          case HandleType.BOTTOM_RIGHT:
-          case HandleType.TOP_LEFT:
-          case HandleType.TOP_RIGHT:
+          case HandleType.BOTTOM_RIGHT: {
+            const factor = Math.abs(ldx) > Math.abs(ldy) ? (ldx / initial.width) : (ldy / initial.height);
+            newW = Math.max(20, initial.width * (1 + factor * 2));
+            newH = Math.max(20, newW / (layer.aspectRatio || 1));
+            break;
+          }
+          case HandleType.TOP_LEFT: {
+            const factor = Math.abs(ldx) > Math.abs(ldy) ? (-ldx / initial.width) : (-ldy / initial.height);
+            newW = Math.max(20, initial.width * (1 + factor * 2));
+            newH = Math.max(20, newW / (layer.aspectRatio || 1));
+            break;
+          }
+          case HandleType.TOP_RIGHT: {
+            const factor = Math.abs(ldx) > Math.abs(ldy) ? (ldx / initial.width) : (-ldy / initial.height);
+            newW = Math.max(20, initial.width * (1 + factor * 2));
+            newH = Math.max(20, newW / (layer.aspectRatio || 1));
+            break;
+          }
           case HandleType.BOTTOM_LEFT: {
-            const scale = 1 + (Math.abs(ldx) > Math.abs(ldy) ? ldx / initial.width : ldy / initial.height);
-            newW = Math.max(20, initial.width * scale);
+            const factor = Math.abs(ldx) > Math.abs(ldy) ? (-ldx / initial.width) : (ldy / initial.height);
+            newW = Math.max(20, initial.width * (1 + factor * 2));
             newH = Math.max(20, newW / (layer.aspectRatio || 1));
             break;
           }
         }
 
-        layer.width = Math.round(newW);
-        layer.height = Math.round(newH);
+        // Apply magnetic snapping during resize!
+        const { snappedW, snappedH, guides } = this.calculateResizeSnapping(
+          this.activeHandle.type,
+          newW,
+          newH,
+          e.altKey
+        );
+        this.activeSnapGuides = guides;
+
+        layer.width = Math.round(snappedW);
+        layer.height = Math.round(snappedH);
       }
 
       this.notifySelectionChanged();
@@ -971,7 +1192,9 @@ export class CanvasEngine {
     if (this.activeHandle) {
       this.activeHandle = null;
       this.dragStartLayerProps = null;
+      this.activeSnapGuides = [];
       this.notifyLayersChanged();
+      this.requestRender();
     }
     if (this.isDraggingLayer) {
       this.isDraggingLayer = false;
