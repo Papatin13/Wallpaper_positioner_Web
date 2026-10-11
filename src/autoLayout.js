@@ -245,10 +245,10 @@ export class AutoLayout {
 
     if (n === 1) {
       const l = shuffled[0];
-      l.fitInto(availW * 0.85, availH * 0.85, cover);
-      l.rotation = Math.round((Math.random() - 0.5) * 12);
-      l.x = rx + rw / 2.0 + (Math.random() - 0.5) * (availW * 0.08);
-      l.y = ry + rh / 2.0 + (Math.random() - 0.5) * (availH * 0.08);
+      l.resetRotation(); // Immer waagerecht (0°)
+      l.fitInto(availW * 0.9, availH * 0.9, cover);
+      l.x = rx + rw / 2.0;
+      l.y = ry + rh / 2.0;
       return;
     }
 
@@ -273,24 +273,23 @@ export class AutoLayout {
       const layer = shuffled[i];
       const slot = slots[i % slots.length];
 
-      // Random scale variation: 0.85x to 1.25x of the slot size
-      const scaleVariation = 0.85 + Math.random() * 0.4;
+      // Immer waagerecht ausrichten (0° Drehung)
+      layer.resetRotation();
+
+      // Random scale variation: 0.85x to 1.2x of the slot size
+      const scaleVariation = 0.85 + Math.random() * 0.35;
       const targetW = Math.max(30.0, (cellW - gap) * scaleVariation);
       const targetH = Math.max(30.0, (cellH - gap) * scaleVariation);
 
       layer.fitInto(targetW, targetH, cover);
 
-      // Random jitter offset within slot
-      const jitterX = (Math.random() - 0.5) * (cellW * 0.3);
-      const jitterY = (Math.random() - 0.5) * (cellH * 0.3);
+      // Random jitter offset within slot (subtle position variation)
+      const jitterX = (Math.random() - 0.5) * (cellW * 0.25);
+      const jitterY = (Math.random() - 0.5) * (cellH * 0.25);
 
-      // Random playful rotation between -12° and +12° (polaroid tilt)
-      const rot = Math.round((Math.random() - 0.5) * 24);
-      layer.rotation = rot;
-
-      // Ensure center keeps image reasonably inside canvas
-      layer.x = Math.max(rx + m + layer.width * 0.35, Math.min(rx + rw - m - layer.width * 0.35, slot.cx + jitterX));
-      layer.y = Math.max(ry + m + layer.height * 0.35, Math.min(ry + rh - m - layer.height * 0.35, slot.cy + jitterY));
+      // Ensure center keeps image neatly inside canvas
+      layer.x = Math.max(rx + m + layer.width / 2.0, Math.min(rx + rw - m - layer.width / 2.0, slot.cx + jitterX));
+      layer.y = Math.max(ry + m + layer.height / 2.0, Math.min(ry + rh - m - layer.height / 2.0, slot.cy + jitterY));
     }
   }
 
